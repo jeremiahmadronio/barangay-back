@@ -1,6 +1,6 @@
 package com.barangay.barangay.audit.model;
 
-import com.barangay.barangay.auth.model.User;
+import com.barangay.barangay.users.model.User;
 import com.barangay.barangay.auth.model.Department;
 import jakarta.persistence.*;
 import lombok.*;

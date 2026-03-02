@@ -1,6 +1,8 @@
 
-package com.barangay.barangay.auth.model;
+package com.barangay.barangay.users.model;
 
+import com.barangay.barangay.auth.model.Department;
+import com.barangay.barangay.auth.model.Role;
 import com.barangay.barangay.enumerated.Status;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;

@@ -3,11 +3,11 @@ package com.barangay.barangay.dataseed;
 import com.barangay.barangay.auth.model.Department;
 import com.barangay.barangay.auth.model.Permission;
 import com.barangay.barangay.auth.model.Role;
-import com.barangay.barangay.auth.model.User;
+import com.barangay.barangay.users.model.User;
 import com.barangay.barangay.auth.repository.DepartmentRepository;
 import com.barangay.barangay.auth.repository.PermissionRepository;
 import com.barangay.barangay.auth.repository.RoleRepository;
-import com.barangay.barangay.auth.repository.UserRepository;
+import com.barangay.barangay.users.repository.UserRepository;
 import com.barangay.barangay.enumerated.Status;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
@@ -71,7 +71,6 @@ public class DataInitializer implements CommandLineRunner {
             root.setFailedAttempts(0);
             root.setIsLocked(false);
             userRepository.save(root);
-            System.out.println(">>> ROOT ADMIN CREATED: rootadmin / admin123");
         }
     }
 
