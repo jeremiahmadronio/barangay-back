@@ -29,6 +29,13 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     //unlock account scheduler
     List<User> findAllByIsLockedTrueAndLockUntilBefore(LocalDateTime now);
 
+
+    @Query("SELECT COUNT(u) FROM User u")
+    Long countAllUsers();
+
+    @Query("SELECT COUNT(u) FROM User u WHERE u.status = com.barangay.barangay.enumerated.Status.ACTIVE")
+    Long countActiveUsers();
+
     //admin stats
     @Query("SELECT new com.barangay.barangay.users.dto.AdminStats(" +
             "COUNT(u), " +

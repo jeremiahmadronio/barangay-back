@@ -153,7 +153,7 @@ public class UserController {
         if(!user.getRole().getRoleName().equals("ROOT_ADMIN")){
             throw new RuntimeException("Only root admin can access.");
         }
-    
+
 
         String ipAddress = IpAdressUtils.getClientIp(request);
 

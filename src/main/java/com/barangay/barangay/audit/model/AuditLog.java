@@ -1,5 +1,6 @@
 package com.barangay.barangay.audit.model;
 
+import com.barangay.barangay.enumerated.Severity;
 import com.barangay.barangay.users.model.User;
 import com.barangay.barangay.auth.model.Department;
 import jakarta.persistence.*;
@@ -35,7 +36,9 @@ public class AuditLog {
     @Column(length = 45)
     private String ipAddress;
     private String module;
-    private String severity;
+
+    @Enumerated(EnumType.STRING)
+    private Severity severity;
     @Column(name = "action_taken")
     private String actionTaken;
     @Column(columnDefinition = "TEXT")

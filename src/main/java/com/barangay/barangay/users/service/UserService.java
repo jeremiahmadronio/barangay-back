@@ -5,6 +5,7 @@ import com.barangay.barangay.auth.model.Department;
 import com.barangay.barangay.auth.model.Role;
 import com.barangay.barangay.auth.repository.DepartmentRepository;
 import com.barangay.barangay.auth.repository.RoleRepository;
+import com.barangay.barangay.enumerated.Severity;
 import com.barangay.barangay.enumerated.Status;
 import com.barangay.barangay.users.dto.*;
 import com.barangay.barangay.users.model.User;
@@ -34,6 +35,7 @@ public class UserService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuditLogService auditLogService;
+
 
 
 
@@ -92,8 +94,8 @@ public class UserService {
         auditLogService.log(
                 actor,
                 null,
-                "USER_MANAGEMENT",
-                "INFO",
+                "ROOT_ADMIN",
+                Severity.INFO,
                 "CREATE_ADMIN",
                 ipAddress,
                 "Created admin account for: " + savedAdmin.getFirstName() + savedAdmin.getLastName() ,
@@ -192,7 +194,7 @@ public class UserService {
                 actor,
                 null,
                 "USER_MANAGEMENT",
-                "INFO",
+                Severity.INFO,
                 "UPDATE_ADMIN",
                 ipAddress,
                 "Update admin account for: " + userToEdit.getFirstName() + userToEdit.getLastName() ,
@@ -235,7 +237,7 @@ public class UserService {
                 actor,
                 null,
                 "USER_SECURITY",
-                lock ? "WARN" : "INFO",
+                lock ? Severity.WARN : Severity.INFO,
                 lock ? "LOCK_ACCOUNT" : "UNLOCK_ACCOUNT",
                 ip,
                 logMessage,
@@ -262,7 +264,7 @@ public class UserService {
         userRepository.save(user);
 
 
-        String severity = (newStatus == Status.INACTIVE) ? "WARN" : "INFO";
+        Severity severity = (newStatus == Status.INACTIVE) ? Severity.WARN : Severity.INFO;
         auditLogService.log(
                 actor,
                 null,
