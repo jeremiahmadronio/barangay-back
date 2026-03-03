@@ -6,6 +6,7 @@ import com.barangay.barangay.auth.model.Role;
 import com.barangay.barangay.auth.repository.DepartmentRepository;
 import com.barangay.barangay.auth.repository.RoleRepository;
 import com.barangay.barangay.enumerated.Status;
+import com.barangay.barangay.users.dto.AdminStats;
 import com.barangay.barangay.users.dto.CreateAdmin;
 import com.barangay.barangay.users.model.User;
 import com.barangay.barangay.users.repository.UserRepository;
@@ -30,6 +31,7 @@ public class UserService {
     private final AuditLogService auditLogService;
 
 
+    //Create Admin Account and implementing role based access and audit logs
     @Transactional
     public void createAdminAccount (CreateAdmin createAdmin,User actor , String ipAddress){
 
@@ -80,13 +82,21 @@ public class UserService {
                 "INFO",
                 "CREATE_ADMIN",
                 ipAddress,
-                "Created admin account for: " + savedAdmin.getFirstName() + savedAdmin.getLastName(),
+                "Created admin account for: " + savedAdmin.getFirstName() + savedAdmin.getLastName() ,
                 null,
                 createAdmin
         );
 
-
-
     }
+
+
+    //Display admin stats
+    public AdminStats displayAdminStats(){
+        return userRepository.getAdminStats();
+    }
+
+
+
+
 
 }
