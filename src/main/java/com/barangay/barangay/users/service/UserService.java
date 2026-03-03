@@ -7,17 +7,25 @@ import com.barangay.barangay.auth.repository.DepartmentRepository;
 import com.barangay.barangay.auth.repository.RoleRepository;
 import com.barangay.barangay.enumerated.Status;
 import com.barangay.barangay.users.dto.AdminStats;
+import com.barangay.barangay.users.dto.AdminTable;
 import com.barangay.barangay.users.dto.CreateAdmin;
+import com.barangay.barangay.users.dto.UpdateAdmin;
 import com.barangay.barangay.users.model.User;
 import com.barangay.barangay.users.repository.UserRepository;
 import jakarta.persistence.Table;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +37,15 @@ public class UserService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuditLogService auditLogService;
+
+
+
+    //Display admin stats
+    @Transactional(readOnly = true)
+    public AdminStats displayAdminStats(){
+        return userRepository.getAdminStats();
+    }
+
 
 
     //Create Admin Account and implementing role based access and audit logs
@@ -90,13 +107,101 @@ public class UserService {
     }
 
 
-    //Display admin stats
-    public AdminStats displayAdminStats(){
-        return userRepository.getAdminStats();
+
+    @Transactional
+    public Page<AdminTable> displayAllAdminTables(String search,String role, Status status, int page, int size){
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+
+        Page<User> users = userRepository.findAllAdminsWithFilters(search , role,status, pageable);
+
+        return users.map(user -> new AdminTable(
+                user.getId(),
+                user.getUsername(),
+                user.getFirstName(),
+                user.getLastName(),
+                user.getEmail(),
+                user.getContactNumber(),
+                user.getRole().getRoleName(),
+                user.getAllowedDepartments().stream().map(Department::getName).collect(Collectors.toSet()),
+                user.getIsLocked(),
+                user.getStatus().name(),
+                user.getCreatedAt(),
+                user.getLastLoginAt(),
+                user.getLockUntil(),
+                user.getUpdatedAt()
+        ));
     }
 
 
 
+
+    @Transactional
+    public void updateAdminAccount(UUID userId, UpdateAdmin updateDto, User actor, String ipAddress) {
+
+        //check if id passes is already existing
+        User userToEdit = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User to edit not found."));
+
+
+        AdminTable oldState = new AdminTable(
+                userToEdit.getId(),
+                userToEdit.getUsername(),
+                userToEdit.getFirstName(),
+                userToEdit.getLastName(),
+                userToEdit.getEmail(),
+                userToEdit.getContactNumber(),
+                userToEdit.getRole().getRoleName(),
+                userToEdit.getAllowedDepartments().stream().map(Department::getName).collect(Collectors.toSet()),
+                userToEdit.getIsLocked(),
+                userToEdit.getStatus().name(),
+                userToEdit.getCreatedAt(),
+                userToEdit.getLastLoginAt(),
+                userToEdit.getLockUntil(),
+                userToEdit.getUpdatedAt()
+        );
+
+
+        //check if other user use this email
+        if (userRepository.existsByEmailAndIdNot(updateDto.email(), userId)) {
+            throw new RuntimeException("Email is already taken by another account.");
+        }
+        //check if other user use this username
+        if (userRepository.existsByUsernameAndIdNot(updateDto.username(), userId)) {
+            throw new RuntimeException("Username is already taken.");
+        }
+
+
+        userToEdit.setFirstName(updateDto.firstName());
+        userToEdit.setLastName(updateDto.lastName());
+        userToEdit.setEmail(updateDto.email());
+        userToEdit.setUsername(updateDto.username());
+        userToEdit.setContactNumber(updateDto.contactNumber());
+        Role newRole = roleRepository.findById(updateDto.roleId())
+                .orElseThrow(() -> new RuntimeException("Role not found."));
+        userToEdit.setRole(newRole);
+        Set<Department> departments = new HashSet<>();
+        if (updateDto.allDepartments()) {
+            departments.addAll(departmentRepository.findAll());
+        } else {
+            departments.addAll(departmentRepository.findAllById(updateDto.departmentIds()));
+        }
+        userToEdit.setAllowedDepartments(departments);
+
+        userRepository.save(userToEdit);
+
+        auditLogService.log(
+                actor,
+                null,
+                "USER_MANAGEMENT",
+                "INFO",
+                "UPDATE_ADMIN",
+                ipAddress,
+                "Update admin account for: " + userToEdit.getFirstName() + userToEdit.getLastName() ,
+                oldState,
+                userToEdit
+        );
+    }
 
 
 }

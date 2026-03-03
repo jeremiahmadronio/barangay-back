@@ -1,14 +1,18 @@
 package com.barangay.barangay.users.controller;
 
 import com.barangay.barangay.audit.service.IpAdressUtils;
+import com.barangay.barangay.enumerated.Status;
 import com.barangay.barangay.users.dto.AdminStats;
+import com.barangay.barangay.users.dto.AdminTable;
 import com.barangay.barangay.users.dto.CreateAdmin;
+import com.barangay.barangay.users.dto.UpdateAdmin;
 import com.barangay.barangay.users.model.User;
 import com.barangay.barangay.users.repository.UserRepository;
 import com.barangay.barangay.users.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
@@ -47,7 +51,7 @@ public class UserController {
 
 
 
-
+   // admin stats
     @GetMapping("/stats")
     public ResponseEntity<AdminStats> displayAdminStats(
             @RequestParam UUID actorId
@@ -64,5 +68,50 @@ public class UserController {
     }
 
 
+   //admin table
+    @GetMapping("admin-table")
+    public ResponseEntity<Page<AdminTable>> displayAdminTable(
+            @RequestParam UUID actorId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String role,
+            @RequestParam(required = false) Status status
+    ){
+        //check if user is root admin
+        User user = userRepository.findById(actorId)
+                .orElseThrow(() -> new RuntimeException("user not found."));
+
+        if(!user.getRole().getRoleName().equals("ROOT_ADMIN")){
+            throw new RuntimeException("Only root admin can access.");
+        }
+
+        return ResponseEntity.ok(userService.displayAllAdminTables(search,role,status,page,size));
+    }
+
+
+
+
+    // Update Admin
+    @PutMapping("/update-admin")
+    public ResponseEntity<String> updateAdminProfile(
+            @RequestParam UUID userId,
+            @Valid @RequestBody UpdateAdmin updateDto,
+            @RequestParam UUID actorId,
+            HttpServletRequest request
+    ) {
+        //check if user is root admin.
+        User user = userRepository.findById(actorId).
+                orElseThrow(() -> new RuntimeException("user not found."));
+
+        if(!user.getRole().getRoleName().equals("ROOT_ADMIN")){
+            throw new RuntimeException("Only root admin can access.");
+        }
+
+        String ipAddress = IpAdressUtils.getClientIp(request);
+
+        userService.updateAdminAccount(userId, updateDto, user, ipAddress);
+        return ResponseEntity.ok("Admin profile updated successfully and logged in audit trails.");
+    }
 
 }
