@@ -6,10 +6,7 @@ import com.barangay.barangay.auth.model.Role;
 import com.barangay.barangay.auth.repository.DepartmentRepository;
 import com.barangay.barangay.auth.repository.RoleRepository;
 import com.barangay.barangay.enumerated.Status;
-import com.barangay.barangay.users.dto.AdminStats;
-import com.barangay.barangay.users.dto.AdminTable;
-import com.barangay.barangay.users.dto.CreateAdmin;
-import com.barangay.barangay.users.dto.UpdateAdmin;
+import com.barangay.barangay.users.dto.*;
 import com.barangay.barangay.users.model.User;
 import com.barangay.barangay.users.repository.UserRepository;
 import jakarta.persistence.Table;
@@ -135,7 +132,7 @@ public class UserService {
 
 
 
-
+   //update admin
     @Transactional
     public void updateAdminAccount(UUID userId, UpdateAdmin updateDto, User actor, String ipAddress) {
 
@@ -143,7 +140,7 @@ public class UserService {
         User userToEdit = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User to edit not found."));
 
-
+        //get all value for audit logs
         AdminTable oldState = new AdminTable(
                 userToEdit.getId(),
                 userToEdit.getUsername(),
@@ -161,7 +158,6 @@ public class UserService {
                 userToEdit.getUpdatedAt()
         );
 
-
         //check if other user use this email
         if (userRepository.existsByEmailAndIdNot(updateDto.email(), userId)) {
             throw new RuntimeException("Email is already taken by another account.");
@@ -171,7 +167,7 @@ public class UserService {
             throw new RuntimeException("Username is already taken.");
         }
 
-
+       //updating data from data to database
         userToEdit.setFirstName(updateDto.firstName());
         userToEdit.setLastName(updateDto.lastName());
         userToEdit.setEmail(updateDto.email());
@@ -188,8 +184,10 @@ public class UserService {
         }
         userToEdit.setAllowedDepartments(departments);
 
+        //save update to database
         userRepository.save(userToEdit);
 
+        //audit logs for changes
         auditLogService.log(
                 actor,
                 null,
@@ -202,6 +200,83 @@ public class UserService {
                 userToEdit
         );
     }
+
+
+    @Transactional
+    public void toggleUserLock(UUID userId, boolean lock, User actor, String ip, UserActionRequest request) {
+        //check if user exist
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found."));
+
+        //updating user status
+        user.setIsLocked(lock);
+
+        if (lock) {
+            user.setStatus(Status.LOCKED);
+            user.setLockUntil(request.lockUntil());
+        } else {
+            user.setFailedAttempts(0);
+            user.setLockUntil(null);
+        }
+
+        //forward to repository and save to database
+        userRepository.save(user);
+
+
+        //message for audit logs
+        String logMessage = String.format("%s account for %s. Reason: %s",
+                lock ? "Locked until " + (request.lockUntil() != null ? request.lockUntil() : "Manual Unlock") : "Unlocked",
+                user.getUsername(),
+                request.reason()
+        );
+
+        //audit logs
+        auditLogService.log(
+                actor,
+                null,
+                "USER_SECURITY",
+                lock ? "WARN" : "INFO",
+                lock ? "LOCK_ACCOUNT" : "UNLOCK_ACCOUNT",
+                ip,
+                logMessage,
+                !lock,
+                lock
+        );
+    }
+
+
+
+
+    @Transactional
+    public void updateUserStatus(UUID userId, Status newStatus, User actor, String ip, String reason) {
+        //check user if exist
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found."));
+
+        //get old status for audit logs
+        Status oldStatus = user.getStatus();
+
+        //update new status
+        user.setStatus(newStatus);
+        //forward to repository and save to database
+        userRepository.save(user);
+
+
+        String severity = (newStatus == Status.INACTIVE) ? "WARN" : "INFO";
+        auditLogService.log(
+                actor,
+                null,
+                "USER_MANAGEMENT",
+                severity,
+                "STATUS_CHANGE",
+                ip,
+                "Changed status for " + user.getUsername() + " to " + newStatus + ". Reason: " + reason,
+                oldStatus,
+                newStatus);
+    }
+
+
+
 
 
 }

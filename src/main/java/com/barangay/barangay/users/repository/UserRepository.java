@@ -10,6 +10,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -23,6 +25,9 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     boolean existsByEmailAndIdNot(String email, UUID id);
     boolean existsByUsernameAndIdNot(String username, UUID id);
+
+    //unlock account scheduler
+    List<User> findAllByIsLockedTrueAndLockUntilBefore(LocalDateTime now);
 
     //admin stats
     @Query("SELECT new com.barangay.barangay.users.dto.AdminStats(" +

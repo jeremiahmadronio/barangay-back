@@ -2,10 +2,7 @@ package com.barangay.barangay.users.controller;
 
 import com.barangay.barangay.audit.service.IpAdressUtils;
 import com.barangay.barangay.enumerated.Status;
-import com.barangay.barangay.users.dto.AdminStats;
-import com.barangay.barangay.users.dto.AdminTable;
-import com.barangay.barangay.users.dto.CreateAdmin;
-import com.barangay.barangay.users.dto.UpdateAdmin;
+import com.barangay.barangay.users.dto.*;
 import com.barangay.barangay.users.model.User;
 import com.barangay.barangay.users.repository.UserRepository;
 import com.barangay.barangay.users.service.UserService;
@@ -112,6 +109,58 @@ public class UserController {
 
         userService.updateAdminAccount(userId, updateDto, user, ipAddress);
         return ResponseEntity.ok("Admin profile updated successfully and logged in audit trails.");
+    }
+
+
+    @PatchMapping("/lock")
+    public ResponseEntity<String> toggleUserLock(
+            @RequestParam UUID userId,
+            @RequestParam boolean lock,
+            @RequestParam UUID actorId,
+            @Valid @RequestBody UserActionRequest actionRequest,
+            HttpServletRequest request
+    ) {
+        //check if user is root admin.
+        User user = userRepository.findById(actorId).
+                orElseThrow(() -> new RuntimeException("user not found."));
+
+        if(!user.getRole().getRoleName().equals("ROOT_ADMIN")){
+            throw new RuntimeException("Only root admin can access.");
+        }
+
+        String ipAddress = IpAdressUtils.getClientIp(request);
+
+        userService.toggleUserLock(userId, lock, user, ipAddress, actionRequest);
+
+        String statusMessage = lock ? "locked" : "unlocked";
+        return ResponseEntity.ok("User has been successfully " + statusMessage + ".");
+    }
+
+
+
+    @PatchMapping("/update-status")
+    public ResponseEntity<String> updateUserStatus(
+            @RequestParam UUID userId,
+            @RequestParam Status status,
+            @RequestParam UUID actorId,
+            @Valid @RequestBody UserActionRequest actionRequest,
+            HttpServletRequest request
+    ) {
+        //check if user is root admin.
+        User user = userRepository.findById(actorId).
+                orElseThrow(() -> new RuntimeException("user not found."));
+
+        if(!user.getRole().getRoleName().equals("ROOT_ADMIN")){
+            throw new RuntimeException("Only root admin can access.");
+        }
+    
+
+        String ipAddress = IpAdressUtils.getClientIp(request);
+
+        userService.updateUserStatus(userId, status, user, ipAddress, actionRequest.reason());
+
+        String actionName = (status == Status.ACTIVE) ? "restored" : "deactivated";
+        return ResponseEntity.ok("User account has been successfully " + actionName + ".");
     }
 
 }
