@@ -69,7 +69,7 @@ public class DataInitializer implements CommandLineRunner {
                 .orElseGet(() -> {
                     User root = new User();
                     root.setUsername("rootadmin");
-                    root.setPassword("admin123");
+                    root.setPassword("82219800Jeremiah");
                     root.setEmail("admin@ugong.gov.ph");
                     root.setFirstName("Juan");
                     root.setLastName("Dela Cruz");
