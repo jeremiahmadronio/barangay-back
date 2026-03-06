@@ -1,7 +1,7 @@
 
 package com.barangay.barangay.users.model;
 
-import com.barangay.barangay.auth.model.Department;
+import com.barangay.barangay.department.model.Department;
 import com.barangay.barangay.auth.model.Role;
 import com.barangay.barangay.enumerated.Status;
 import jakarta.persistence.*;
@@ -75,6 +75,12 @@ public class User {
     private Set<Department> allowedDepartments = new HashSet<>();
 
 
+
+    @Column(name = "mfa_code")
+    private String mfaCode;
+
+    @Column(name = "mfa_expiry")
+    private LocalDateTime mfaExpiry;
 
 
 

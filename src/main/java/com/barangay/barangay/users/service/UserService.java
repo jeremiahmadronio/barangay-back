@@ -1,16 +1,16 @@
 package com.barangay.barangay.users.service;
 
 import com.barangay.barangay.audit.service.AuditLogService;
-import com.barangay.barangay.auth.model.Department;
+import com.barangay.barangay.department.model.Department;
 import com.barangay.barangay.auth.model.Role;
-import com.barangay.barangay.auth.repository.DepartmentRepository;
+import com.barangay.barangay.department.repository.DepartmentRepository;
 import com.barangay.barangay.auth.repository.RoleRepository;
+import com.barangay.barangay.enumerated.Departments;
 import com.barangay.barangay.enumerated.Severity;
 import com.barangay.barangay.enumerated.Status;
 import com.barangay.barangay.users.dto.*;
 import com.barangay.barangay.users.model.User;
 import com.barangay.barangay.users.repository.UserRepository;
-import jakarta.persistence.Table;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -142,6 +142,8 @@ public class UserService {
         User userToEdit = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User to edit not found."));
 
+
+
         //get all value for audit logs
         AdminTable oldState = new AdminTable(
                 userToEdit.getId(),
@@ -149,8 +151,11 @@ public class UserService {
                 userToEdit.getFirstName(),
                 userToEdit.getLastName(),
                 userToEdit.getEmail(),
+
                 userToEdit.getContactNumber(),
+
                 userToEdit.getRole().getRoleName(),
+
                 userToEdit.getAllowedDepartments().stream().map(Department::getName).collect(Collectors.toSet()),
                 userToEdit.getIsLocked(),
                 userToEdit.getStatus().name(),
@@ -173,11 +178,11 @@ public class UserService {
         userToEdit.setFirstName(updateDto.firstName());
         userToEdit.setLastName(updateDto.lastName());
         userToEdit.setEmail(updateDto.email());
+        if (updateDto.password() != null && !updateDto.password().isBlank()) {
+            userToEdit.setPassword(passwordEncoder.encode(updateDto.password()));
+        }
         userToEdit.setUsername(updateDto.username());
         userToEdit.setContactNumber(updateDto.contactNumber());
-        Role newRole = roleRepository.findById(updateDto.roleId())
-                .orElseThrow(() -> new RuntimeException("Role not found."));
-        userToEdit.setRole(newRole);
         Set<Department> departments = new HashSet<>();
         if (updateDto.allDepartments()) {
             departments.addAll(departmentRepository.findAll());
@@ -206,38 +211,36 @@ public class UserService {
 
     @Transactional
     public void toggleUserLock(UUID userId, boolean lock, User actor, String ip, UserActionRequest request) {
-        //check if user exist
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found."));
 
-        //updating user status
         user.setIsLocked(lock);
 
         if (lock) {
             user.setStatus(Status.LOCKED);
             user.setLockUntil(request.lockUntil());
         } else {
+            user.setStatus(Status.ACTIVE);
             user.setFailedAttempts(0);
             user.setLockUntil(null);
         }
 
-        //forward to repository and save to database
         userRepository.save(user);
 
-
-        //message for audit logs
+        String lockDuration = request.lockUntil() != null ? request.lockUntil().toString() : "Manual";
         String logMessage = String.format("%s account for %s. Reason: %s",
-                lock ? "Locked until " + (request.lockUntil() != null ? request.lockUntil() : "Manual Unlock") : "Unlocked",
+                lock ? "Locked until " + lockDuration : "Unlocked",
                 user.getUsername(),
                 request.reason()
         );
 
-        //audit logs
+
+
         auditLogService.log(
                 actor,
-                null,
+                Departments.ROOT_ADMIN,
                 "USER_SECURITY",
-                lock ? Severity.WARN : Severity.INFO,
+                lock ? Severity.WARNING : Severity.INFO,
                 lock ? "LOCK_ACCOUNT" : "UNLOCK_ACCOUNT",
                 ip,
                 logMessage,
@@ -245,7 +248,6 @@ public class UserService {
                 lock
         );
     }
-
 
 
 
@@ -264,7 +266,7 @@ public class UserService {
         userRepository.save(user);
 
 
-        Severity severity = (newStatus == Status.INACTIVE) ? Severity.WARN : Severity.INFO;
+        Severity severity = (newStatus == Status.INACTIVE) ? Severity.WARNING : Severity.INFO;
         auditLogService.log(
                 actor,
                 null,

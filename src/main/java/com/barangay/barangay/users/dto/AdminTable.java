@@ -17,6 +17,7 @@ public record AdminTable (
         String email,
         String contactNumber,
         String roleName,
+
         Set<String> departments,
         boolean isLocked,
         String status,

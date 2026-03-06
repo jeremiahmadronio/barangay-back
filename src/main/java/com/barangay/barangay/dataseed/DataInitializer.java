@@ -2,11 +2,12 @@ package com.barangay.barangay.dataseed;
 
 import com.barangay.barangay.audit.model.AuditLog;
 import com.barangay.barangay.audit.repository.AuditLogRepository;
-import com.barangay.barangay.auth.model.Department;
+import com.barangay.barangay.department.model.Department;
 import com.barangay.barangay.auth.model.Permission;
 import com.barangay.barangay.auth.model.Role;
+import com.barangay.barangay.enumerated.Departments;
 import com.barangay.barangay.users.model.User;
-import com.barangay.barangay.auth.repository.DepartmentRepository;
+import com.barangay.barangay.department.repository.DepartmentRepository;
 import com.barangay.barangay.auth.repository.PermissionRepository;
 import com.barangay.barangay.auth.repository.RoleRepository;
 import com.barangay.barangay.users.repository.UserRepository;
@@ -15,12 +16,16 @@ import com.barangay.barangay.enumerated.Severity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -32,21 +37,26 @@ public class DataInitializer implements CommandLineRunner {
     private final DepartmentRepository departmentRepository;
     private final AuditLogRepository auditLogRepository;
     private final JdbcTemplate jdbcTemplate;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     @Transactional
     public void run(String... args) {
+
+        // ── Departments ──────────────────────────────────────────────────────
         Department adminDept = createDeptIfNotFound("ADMINISTRATION");
-        Department vawcDept = createDeptIfNotFound("VAWC");
-        Department blotterDept = createDeptIfNotFound("BLOTTER");
+        createDeptIfNotFound("VAWC");
+        createDeptIfNotFound("BLOTTER");
         createDeptIfNotFound("KAPITANA");
-        Department bcpcDept = createDeptIfNotFound("BCPC");
-        Department clearanceDept = createDeptIfNotFound("CLEARANCE");
-        createDeptIfNotFound("LUPONG TAGAPAMAYAPA");
-        createDeptIfNotFound("OPERATIONAL STAFF");
-        Department ftjsDept = createDeptIfNotFound("FTJS");
+        createDeptIfNotFound("BCPC");
+        createDeptIfNotFound("CLEARANCE");
+        createDeptIfNotFound("LUPONG_TAGAPAMAYAPA");
+        createDeptIfNotFound("OPERATIONAL_STAFF");
+        createDeptIfNotFound("FTJS");
+        createDeptIfNotFound("ROOT_ADMIN");
         createDeptIfNotFound("CONTENT");
 
+        // ── Permissions ──────────────────────────────────────────────────────
         Permission allAccess = createPermIfNotFound("ALL_ACCESS");
         createPermIfNotFound("VIEW_RECORDS");
         createPermIfNotFound("CREATE_EDIT_RECORDS");
@@ -54,6 +64,7 @@ public class DataInitializer implements CommandLineRunner {
         createPermIfNotFound("GENERATE_REPORTS");
         createPermIfNotFound("ISSUE_CERTIFICATES");
 
+        // ── Roles ────────────────────────────────────────────────────────────
         Role rootRole = roleRepository.findByRoleName("ROOT_ADMIN")
                 .orElseGet(() -> {
                     Role role = new Role();
@@ -65,12 +76,17 @@ public class DataInitializer implements CommandLineRunner {
         createRoleIfNotFound("ADMIN");
         createRoleIfNotFound("STAFF");
 
+
+        String rawPassword = "82219800Jeremiah!";
+        String hashedContext = passwordEncoder.encode(rawPassword);
+
+        // ── Root User ────────────────────────────────────────────────────────
         User rootUser = userRepository.findByUsername("rootadmin")
                 .orElseGet(() -> {
                     User root = new User();
                     root.setUsername("rootadmin");
-                    root.setPassword("82219800Jeremiah");
-                    root.setEmail("admin@ugong.gov.ph");
+                    root.setPassword(hashedContext);
+                    root.setEmail("nssdermamadronio@gmail.com");
                     root.setFirstName("Juan");
                     root.setLastName("Dela Cruz");
                     root.setStatus(Status.ACTIVE);
@@ -81,19 +97,23 @@ public class DataInitializer implements CommandLineRunner {
                     return userRepository.save(root);
                 });
 
-
+        // ── Audit Log Seeding ────────────────────────────────────────────────
         if (auditLogRepository.count() == 0) {
             System.out.println("Starting Audit Log Seeding for Dashboard Testing...");
 
-            seedLogs(rootUser, vawcDept, "VAWC", 245);
-            seedLogs(rootUser, blotterDept, "BLOTTER", 189);
-            seedLogs(rootUser, bcpcDept, "BCPC", 156);
-            seedLogs(rootUser, ftjsDept, "FTJS", 98);
-            seedLogs(rootUser, clearanceDept, "CLEARANCE", 312);
+            // FIX: Each seedLogs call now uses the correct department enum
+            seedLogs(rootUser, Departments.VAWC,      "VAWC",      245);
+            seedLogs(rootUser, Departments.BLOTTER,   "BLOTTER",   189);
+            seedLogs(rootUser, Departments.BCPC,      "BCPC",      156);
+            seedLogs(rootUser, Departments.FTJS,      "FTJS",       98);
+            seedLogs(rootUser, Departments.CLEARANCE, "CLEARANCE", 312);
 
+            // FIX: Added .department() — column is nullable = false, this would crash before
+            List<AuditLog> criticalLogs = new ArrayList<>();
             for (int i = 0; i < 3; i++) {
-                auditLogRepository.save(AuditLog.builder()
+                criticalLogs.add(AuditLog.builder()
                         .user(rootUser)
+                        .department(Departments.ROOT_ADMIN)
                         .severity(Severity.CRITICAL)
                         .module("SECURITY")
                         .actionTaken("UNAUTHORIZED_ACCESS_ATTEMPT")
@@ -101,6 +121,7 @@ public class DataInitializer implements CommandLineRunner {
                         .ipAddress("192.168.1.50")
                         .build());
             }
+            auditLogRepository.saveAll(criticalLogs);
 
             seedHistoricalLogs(rootUser, 50);
 
@@ -108,9 +129,15 @@ public class DataInitializer implements CommandLineRunner {
         }
     }
 
-    private void seedLogs(User actor, Department dept, String module, int count) {
+    // ── Private Helpers ───────────────────────────────────────────────────────
+
+    /**
+     * FIX: Was hardcoding Departments.ROOT_ADMIN — now uses the dept param correctly.
+     */
+    private void seedLogs(User actor, Departments dept, String module, int count) {
+        List<AuditLog> logsToSave = new ArrayList<>();
         for (int i = 0; i < count; i++) {
-            auditLogRepository.save(AuditLog.builder()
+            logsToSave.add(AuditLog.builder()
                     .user(actor)
                     .department(dept)
                     .module(module)
@@ -120,23 +147,45 @@ public class DataInitializer implements CommandLineRunner {
                     .ipAddress("127.0.0.1")
                     .build());
         }
+        auditLogRepository.saveAll(logsToSave);
     }
+
+    /**
+     * Seeds historical logs with a backdated created_at timestamp.
+     */
     private void seedHistoricalLogs(User actor, int count) {
+        // Use ROOT_ADMIN as the department for historical/system-generated logs
+        Departments dept = Departments.ROOT_ADMIN;
         LocalDateTime lastMonth = LocalDateTime.now().minusMonths(1).minusDays(5);
+
+        String roleName = (actor.getRole() != null)
+                ? actor.getRole().getRoleName()
+                : "SYSTEM";
+
+        List<AuditLog> logsToSave = new ArrayList<>();
         for (int i = 0; i < count; i++) {
-            AuditLog log = AuditLog.builder()
+            logsToSave.add(AuditLog.builder()
                     .user(actor)
+                    .department(dept)
                     .severity(Severity.INFO)
-                    .module("SYSTEM")
+                    .module(roleName)
                     .actionTaken("HISTORICAL_LOG")
-                    .reason("Log for monthly growth comparison")
+                    .reason("Generated log for " + roleName)
                     .ipAddress("127.0.0.1")
-                    .build();
-
-            log = auditLogRepository.saveAndFlush(log);
-
-            jdbcTemplate.update("UPDATE audit_logs SET created_at = ? WHERE id = ?", lastMonth, log.getId());
+                    .build());
         }
+
+        // Save all first, then batch-update created_at to backdate them
+        List<AuditLog> savedLogs = auditLogRepository.saveAll(logsToSave);
+
+        List<Object[]> batchArgs = savedLogs.stream()
+                .map(log -> new Object[]{lastMonth, log.getId()})
+                .collect(Collectors.toList());
+
+        jdbcTemplate.batchUpdate(
+                "UPDATE audit_logs SET created_at = ? WHERE id = ?",
+                batchArgs
+        );
     }
 
     private Department createDeptIfNotFound(String name) {

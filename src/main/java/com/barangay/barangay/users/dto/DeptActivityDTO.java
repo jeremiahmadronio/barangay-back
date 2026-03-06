@@ -1,10 +1,10 @@
-package com.barangay.barangay.users.dto;
+    package com.barangay.barangay.users.dto;
 
-import java.math.BigDecimal;
+    import java.math.BigDecimal;
 
-public record DeptActivityDTO(
-        String departmentName,
-        long count,
-        BigDecimal percentage
-) {
-}
+    public record DeptActivityDTO(
+            String departmentName,
+            long count,
+            BigDecimal percentage
+    ) {
+    }

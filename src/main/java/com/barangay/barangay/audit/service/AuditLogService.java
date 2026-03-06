@@ -6,7 +6,7 @@ import com.barangay.barangay.audit.dto.AuditViewAll;
 import com.barangay.barangay.audit.dto.Stats;
 import com.barangay.barangay.audit.model.AuditLog;
 import com.barangay.barangay.audit.repository.AuditLogRepository;
-import com.barangay.barangay.auth.model.Department;
+import com.barangay.barangay.enumerated.Departments;
 import com.barangay.barangay.enumerated.Severity;
 import com.barangay.barangay.users.model.User;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,15 +15,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.Arrays;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -35,7 +32,7 @@ public class AuditLogService {
 
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void log(User actor, Department dept, String module, Severity severity, String action, String ip, String reason, Object oldVal, Object newVal) {
+    public void log(User actor, Departments dept, String module, Severity severity, String action, String ip, String reason, Object oldVal, Object newVal) {
         try {
             AuditLog log = AuditLog.builder()
                     .user(actor)

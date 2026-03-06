@@ -5,7 +5,7 @@ import com.barangay.barangay.audit.dto.AuditTable;
 import com.barangay.barangay.audit.dto.AuditViewAll;
 import com.barangay.barangay.audit.dto.Stats;
 import com.barangay.barangay.audit.service.AuditLogService;
-import com.barangay.barangay.audit.service.IpAdressUtils;
+import com.barangay.barangay.audit.service.IpAddressUtils;
 import com.barangay.barangay.users.model.User;
 import com.barangay.barangay.users.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
@@ -97,7 +97,7 @@ public class AuditLogsController {
         if(!user.getRole().getRoleName().equals("ROOT_ADMIN")){
             throw new RuntimeException("Only root admin can access.");
         }
-        String ipAddress = IpAdressUtils.getClientIp(request);
+        String ipAddress = IpAddressUtils.getClientIp(request);
         return ResponseEntity.ok(auditLogService.getAuditLog(id,user,ipAddress));
     }
 

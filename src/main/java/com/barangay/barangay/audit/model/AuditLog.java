@@ -1,8 +1,8 @@
 package com.barangay.barangay.audit.model;
 
+import com.barangay.barangay.enumerated.Departments;
 import com.barangay.barangay.enumerated.Severity;
 import com.barangay.barangay.users.model.User;
-import com.barangay.barangay.auth.model.Department;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -28,9 +28,10 @@ public class AuditLog {
     private User user;
 
     // department connection
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "dept_id")
-    private Department department;
+
+    @Enumerated(EnumType.STRING)
+    @Column
+    private Departments department;
 
     // basic column
     @Column(length = 45)

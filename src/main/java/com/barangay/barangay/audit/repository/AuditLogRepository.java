@@ -32,7 +32,7 @@ public interface AuditLogRepository extends JpaRepository<AuditLog,Long>  {
     @Query("SELECT COUNT(a) FROM AuditLog a WHERE a.createdAt >= :startOfDay")
     Long countLogsToday(@Param("startOfDay") LocalDateTime startOfDay);
 
-    @Query("SELECT COUNT(a) FROM AuditLog a WHERE a.severity = com.barangay.barangay.enumerated.Severity.WARN")
+    @Query("SELECT COUNT(a) FROM AuditLog a WHERE a.severity = com.barangay.barangay.enumerated.Severity.WARNING")
     Long countWarningAlerts();
 
     @Query("SELECT COUNT(a) FROM AuditLog a WHERE a.severity = com.barangay.barangay.enumerated.Severity.CRITICAL")
@@ -46,14 +46,8 @@ public interface AuditLogRepository extends JpaRepository<AuditLog,Long>  {
     Long countLogsLastMonth(@Param("startOfLastMonth") LocalDateTime lastMonth, @Param("startOfMonth") LocalDateTime thisMonth);
 
 
-    @Query("""
-        SELECT a.module, COUNT(a)
-        FROM AuditLog a
-        WHERE a.createdAt >= :startDate
-        GROUP BY a.module
-    """)
+    @Query("SELECT l.department, COUNT(l) FROM AuditLog l WHERE l.createdAt >= :startDate AND l.department IS NOT NULL GROUP BY l.department")
     List<Object[]> countLogsByDepartment(@Param("startDate") LocalDateTime startDate);
-
 
     @Query("""
             SELECT a FROM AuditLog a

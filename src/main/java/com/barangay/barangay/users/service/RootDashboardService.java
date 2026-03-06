@@ -51,11 +51,11 @@ public class RootDashboardService {
         );
     }
 
-
-    @Transactional
+    @Transactional(readOnly = true)
     public ActivityOverviewDTO getActivityOverview() {
         LocalDateTime thirtyDaysAgo = LocalDateTime.now().minusDays(30);
 
+        // Dito kinukuha ang raw data (Object[0] = Enum, Object[1] = Long)
         List<Object[]> rawData = auditLogRepository.countLogsByDepartment(thirtyDaysAgo);
 
         long totalCount = rawData.stream()
@@ -63,7 +63,10 @@ public class RootDashboardService {
                 .sum();
 
         List<DeptActivityDTO> deptActivities = rawData.stream().map(row -> {
-            String name = (String) row[0];
+            // FIX: Huwag i-cast sa (String). Gamitin ang String.valueOf()
+            // o kaya i-cast sa Enum tapos tawagin ang .name()
+            String deptName = row[0] != null ? String.valueOf(row[0]) : "Unknown";
+
             long count = (long) row[1];
 
             BigDecimal percentage = totalCount > 0
@@ -72,7 +75,7 @@ public class RootDashboardService {
                     .divide(BigDecimal.valueOf(totalCount), 1, RoundingMode.HALF_UP)
                     : BigDecimal.ZERO;
 
-            return new DeptActivityDTO(name, count, percentage);
+            return new DeptActivityDTO(deptName, count, percentage);
         }).toList();
 
         return new ActivityOverviewDTO(totalCount, deptActivities);
