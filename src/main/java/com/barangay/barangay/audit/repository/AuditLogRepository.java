@@ -1,7 +1,7 @@
 package com.barangay.barangay.audit.repository;
 
 import com.barangay.barangay.audit.model.AuditLog;
-import com.barangay.barangay.users.dto.RecentSystemAction;
+import com.barangay.barangay.admin_management.dto.RecentSystemAction;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -59,7 +59,7 @@ public interface AuditLogRepository extends JpaRepository<AuditLog,Long>  {
 
 
     @Query("""
-        SELECT new com.barangay.barangay.users.dto.RecentSystemAction(
+        SELECT new com.barangay.barangay.admin_management.dto.RecentSystemAction(
             a.user.firstName,
             a.user.lastName,
             CAST(a.severity AS string),
@@ -74,24 +74,27 @@ public interface AuditLogRepository extends JpaRepository<AuditLog,Long>  {
     List<RecentSystemAction> findTop5RecentActions();
 
 
-
     @Query("""
-            SELECT a FROM AuditLog a
-            JOIN a.user u
-            WHERE (:search IS NULL OR
-                      LOWER(u.firstName)  LIKE :search OR
-                      LOWER(u.lastName)   LIKE :search OR
-                      LOWER(a.reason)     LIKE :search OR
-                      LOWER(a.ipAddress)  LIKE :search)
-              AND (:severity IS NULL OR CAST(a.severity AS string) = :severity)
-              AND (:module   IS NULL OR a.module      = :module)
-              AND (:action   IS NULL OR a.actionTaken = :action)
-            """)
+    SELECT a FROM AuditLog a
+    LEFT JOIN a.user u
+    WHERE (:search IS NULL OR
+              LOWER(u.firstName)  LIKE :search OR
+              LOWER(u.lastName)   LIKE :search OR
+              LOWER(a.reason)     LIKE :search OR
+              LOWER(a.ipAddress)  LIKE :search)
+      AND (:severity IS NULL OR CAST(a.severity AS string) = :severity)
+      AND (:module   IS NULL OR a.module      = :module)
+      AND (:action   IS NULL OR a.actionTaken = :action)
+      AND (CAST(:startDate AS localdatetime) IS NULL OR a.createdAt >= :startDate)
+      AND (CAST(:endDate AS localdatetime)   IS NULL OR a.createdAt <= :endDate)
+    """)
     Page<AuditLog> findAllFiltered(
-            @Param("search")   String search,
-            @Param("severity") String severity,
-            @Param("module")   String module,
-            @Param("action")   String action,
+            @Param("search")    String search,
+            @Param("severity")  String severity,
+            @Param("module")    String module,
+            @Param("action")    String action,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate")   LocalDateTime endDate,
             Pageable pageable
     );
 }

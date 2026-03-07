@@ -1,6 +1,6 @@
 package com.barangay.barangay.security;
 
-import com.barangay.barangay.users.model.User;
+import com.barangay.barangay.admin_management.model.User;
 import com.barangay.barangay.enumerated.Status;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;

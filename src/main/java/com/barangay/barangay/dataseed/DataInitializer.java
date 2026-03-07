@@ -4,13 +4,13 @@ import com.barangay.barangay.audit.model.AuditLog;
 import com.barangay.barangay.audit.repository.AuditLogRepository;
 import com.barangay.barangay.department.model.Department;
 import com.barangay.barangay.auth.model.Permission;
-import com.barangay.barangay.auth.model.Role;
+import com.barangay.barangay.role.model.Role;
 import com.barangay.barangay.enumerated.Departments;
-import com.barangay.barangay.users.model.User;
+import com.barangay.barangay.admin_management.model.User;
 import com.barangay.barangay.department.repository.DepartmentRepository;
 import com.barangay.barangay.auth.repository.PermissionRepository;
-import com.barangay.barangay.auth.repository.RoleRepository;
-import com.barangay.barangay.users.repository.UserRepository;
+import com.barangay.barangay.role.repository.RoleRepository;
+import com.barangay.barangay.admin_management.repository.Root_AdminRepository;
 import com.barangay.barangay.enumerated.Status;
 import com.barangay.barangay.enumerated.Severity;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
 public class DataInitializer implements CommandLineRunner {
 
     private final RoleRepository roleRepository;
-    private final UserRepository userRepository;
+    private final Root_AdminRepository userRepository;
     private final PermissionRepository permissionRepository;
     private final DepartmentRepository departmentRepository;
     private final AuditLogRepository auditLogRepository;

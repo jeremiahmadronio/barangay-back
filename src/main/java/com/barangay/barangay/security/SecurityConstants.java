@@ -11,10 +11,28 @@ public class SecurityConstants {
     };
 
     public static final String[] ROOT_ADMIN_ENDPOINTS = {
+            //audit endpoint
+            "/api/v1/audit/**",
+
+            //departments endpoint
+            "/api/v1/departments/options",
+
+            //root admin dashboard endpoint
             "/api/v1/dashboard/stats",
-            "api/v1/dashboard/activity-overview",
+            "/api/v1/dashboard/activity-overview",
             "/api/v1/dashboard/recent-actions",
-            "/api/v1/departments/options"
+
+            //
+            "/api/v1/users/create-admin",
+            "/api/v1/users/stats",
+            "/api/v1/users/admin-table",
+            "/api/v1/users/update-admin",
+            "/api/v1/users/{UserId}/lock",
+            "/api/v1/users/update-status",
+            "/api/v1/users/settings-preview",
+            "/api/v1/users/update-settings",
+
+
     };
 
     public static final String[] ALLOWED_ORIGINS = {

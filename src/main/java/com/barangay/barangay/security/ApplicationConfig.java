@@ -1,6 +1,6 @@
 package com.barangay.barangay.security;
 
-import com.barangay.barangay.users.repository.UserRepository;
+import com.barangay.barangay.admin_management.repository.Root_AdminRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,7 +17,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 @RequiredArgsConstructor
 public class ApplicationConfig {
 
-    private final UserRepository userRepository;
+    private final Root_AdminRepository userRepository;
 
 
     // check if email is existing
@@ -43,6 +43,7 @@ public class ApplicationConfig {
         return config.getAuthenticationManager();
     }
 
+    //password hashing
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();

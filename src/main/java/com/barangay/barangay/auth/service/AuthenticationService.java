@@ -5,8 +5,8 @@ import com.barangay.barangay.auth.dto.*;
 import com.barangay.barangay.enumerated.Severity;
 import com.barangay.barangay.security.CustomUserDetails;
 import com.barangay.barangay.security.JwtService;
-import com.barangay.barangay.users.model.User;
-import com.barangay.barangay.users.repository.UserRepository;
+import com.barangay.barangay.admin_management.model.User;
+import com.barangay.barangay.admin_management.repository.Root_AdminRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -20,7 +20,7 @@ import java.util.HashMap;
 @RequiredArgsConstructor
 public class AuthenticationService {
 
-    private final UserRepository userRepository;
+    private final Root_AdminRepository userRepository;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final AuditLogService auditLogService;

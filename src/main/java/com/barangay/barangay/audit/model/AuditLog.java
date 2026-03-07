@@ -2,7 +2,7 @@ package com.barangay.barangay.audit.model;
 
 import com.barangay.barangay.enumerated.Departments;
 import com.barangay.barangay.enumerated.Severity;
-import com.barangay.barangay.users.model.User;
+import com.barangay.barangay.admin_management.model.User;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;

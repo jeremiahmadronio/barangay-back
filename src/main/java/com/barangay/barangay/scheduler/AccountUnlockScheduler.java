@@ -1,5 +1,5 @@
-import com.barangay.barangay.users.model.User;
-import com.barangay.barangay.users.repository.UserRepository;
+import com.barangay.barangay.admin_management.model.User;
+import com.barangay.barangay.admin_management.repository.Root_AdminRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -12,7 +12,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AccountUnlockScheduler {
 
-    private final UserRepository userRepository;
+    private final Root_AdminRepository userRepository;
 
     @Scheduled(fixedRate = 300000)
     @Transactional

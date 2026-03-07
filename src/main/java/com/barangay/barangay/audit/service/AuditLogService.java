@@ -8,7 +8,7 @@ import com.barangay.barangay.audit.model.AuditLog;
 import com.barangay.barangay.audit.repository.AuditLogRepository;
 import com.barangay.barangay.enumerated.Departments;
 import com.barangay.barangay.enumerated.Severity;
-import com.barangay.barangay.users.model.User;
+import com.barangay.barangay.admin_management.model.User;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
@@ -28,6 +29,7 @@ public class AuditLogService {
 
     private final AuditLogRepository auditLogRepository;
     private final ObjectMapper objectMapper;
+
 
 
 
@@ -66,18 +68,27 @@ public class AuditLogService {
 
 
     //TABLE
-    public Page<AuditTable> getAuditTable(String search, String severity, String module, String action, int page, int size) {
-        String searchParam = (search == null || search.isBlank())
-                ? null
-                : "%" + search.toLowerCase() + "%";
+    public Page<AuditTable> getAuditTable(
+            String search, String severity, String module, String action,
+            LocalDate startDate, LocalDate endDate,
+            int page, int size
+    ) {
+        String searchParam   = (search == null || search.isBlank()) ? null : "%" + search.toLowerCase() + "%";
         String severityParam = blankToNull(severity);
         String moduleParam   = blankToNull(module);
         String actionParam   = blankToNull(action);
 
+        LocalDateTime startDateTime = (startDate != null) ? startDate.atStartOfDay() : null;
+        LocalDateTime endDateTime   = (endDate   != null) ? endDate.atTime(LocalTime.MAX) : null;
+
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
 
         return auditLogRepository
-                .findAllFiltered(searchParam, severityParam, moduleParam, actionParam, pageable)
+                .findAllFiltered(
+                        searchParam, severityParam, moduleParam, actionParam,
+                        startDateTime, endDateTime,
+                        pageable
+                )
                 .map(this::toTable);
     }
 
@@ -117,18 +128,18 @@ public class AuditLogService {
 
     @Transactional
     public AuditViewAll getAuditLog(Long id, User actor, String ipAddress) {
-        // 1. Hanapin ang record sa database
         AuditLog logRecord = auditLogRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new RuntimeException("Audit log not found: " + id));
 
         this.log(
                 actor,
-                null,
+                Departments.ROOT_ADMIN,
                 "ROOT_ADMIN",
                 Severity.INFO,
                 "VIEW_AUDITS_RECORD",
                 ipAddress,
-                "Viewed details of Audit Log ID: " + id,
+                "Viewed details of Audit Log  " + actor.getFirstName() + " " + actor.getLastName()
+                ,
                 null,
                 null
         );
