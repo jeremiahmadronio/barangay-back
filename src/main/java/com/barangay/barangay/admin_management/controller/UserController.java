@@ -52,19 +52,15 @@ import java.util.UUID;
         }
 
 
-       //admin table
-        @GetMapping("admin-table")
-        public ResponseEntity<Page<AdminTable>> displayAdminTable(
-
-                @RequestParam(defaultValue = "0") int page,
-                @RequestParam(defaultValue = "5") int size,
-                @RequestParam(required = false) String search,
-                @RequestParam(required = false) String role,
-                @RequestParam(required = false) Status status
-        ){
-            return ResponseEntity.ok(userService.displayAllAdminTables(search,role,status,page,size));
-        }
-
+    @GetMapping("/admin-table")
+    public ResponseEntity<Page<AdminTable>> displayAdminTable(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Status status
+    ) {
+        return ResponseEntity.ok(userService.displayAllAdminTables(search, status, page, size));
+    }
 
 
 

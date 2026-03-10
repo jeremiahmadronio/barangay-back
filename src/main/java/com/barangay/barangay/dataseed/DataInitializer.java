@@ -3,12 +3,12 @@ package com.barangay.barangay.dataseed;
 import com.barangay.barangay.audit.model.AuditLog;
 import com.barangay.barangay.audit.repository.AuditLogRepository;
 import com.barangay.barangay.department.model.Department;
-import com.barangay.barangay.auth.model.Permission;
+import com.barangay.barangay.permission.model.Permission;
 import com.barangay.barangay.role.model.Role;
 import com.barangay.barangay.enumerated.Departments;
 import com.barangay.barangay.admin_management.model.User;
 import com.barangay.barangay.department.repository.DepartmentRepository;
-import com.barangay.barangay.auth.repository.PermissionRepository;
+import com.barangay.barangay.permission.repository.PermissionRepository;
 import com.barangay.barangay.role.repository.RoleRepository;
 import com.barangay.barangay.admin_management.repository.Root_AdminRepository;
 import com.barangay.barangay.enumerated.Status;
@@ -57,19 +57,19 @@ public class DataInitializer implements CommandLineRunner {
         createDeptIfNotFound("CONTENT");
 
         // ── Permissions ──────────────────────────────────────────────────────
-        Permission allAccess = createPermIfNotFound("ALL_ACCESS");
-        createPermIfNotFound("VIEW_RECORDS");
-        createPermIfNotFound("CREATE_EDIT_RECORDS");
-        createPermIfNotFound("DELETE_RECORDS_RESTRICTED");
-        createPermIfNotFound("GENERATE_REPORTS");
-        createPermIfNotFound("ISSUE_CERTIFICATES");
+        Permission allAccess = createPermIfNotFound("All Access");
+        createPermIfNotFound("View Records");
+        createPermIfNotFound("Edit Records");
+        createPermIfNotFound("Create Records");
+        createPermIfNotFound("Delete Records (Restricted)");
+        createPermIfNotFound("Generate Reports");
+        createPermIfNotFound("Issue Certificated");
 
         // ── Roles ────────────────────────────────────────────────────────────
         Role rootRole = roleRepository.findByRoleName("ROOT_ADMIN")
                 .orElseGet(() -> {
                     Role role = new Role();
                     role.setRoleName("ROOT_ADMIN");
-                    role.setPermissions(Set.of(allAccess));
                     return roleRepository.save(role);
                 });
 
@@ -80,13 +80,12 @@ public class DataInitializer implements CommandLineRunner {
         String rawPassword = "82219800Jeremiah!";
         String hashedContext = passwordEncoder.encode(rawPassword);
 
-        // ── Root User ────────────────────────────────────────────────────────
         User rootUser = userRepository.findByUsername("rootadmin")
                 .orElseGet(() -> {
                     User root = new User();
                     root.setUsername("rootadmin");
                     root.setPassword(hashedContext);
-                    root.setEmail("nssdermamadronio@gmail.com");
+                    root.setEmail("nermamadronio@gmail.com");
                     root.setFirstName("Juan");
                     root.setLastName("Dela Cruz");
                     root.setStatus(Status.ACTIVE);

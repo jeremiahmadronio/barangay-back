@@ -20,9 +20,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -41,39 +39,33 @@ public class UserService {
 
     //Display admin stats
     @Transactional(readOnly = true)
-    public AdminStats displayAdminStats(){
-        return userRepository.getAdminStats();
+    public AdminStats displayAdminStats() {
+        AdminStats stats = userRepository.getAdminStats();
+
+        return stats != null ? stats : new AdminStats(0L, 0L, 0L, 0L);
     }
 
 
-
-    //Create Admin Account and implementing role based access and audit logs
     @Transactional
-    public void createAdminAccount (CreateAdmin createAdmin, User actor , String ipAddress){
+    public void createAdminAccount(CreateAdmin createAdmin, User actor, String ipAddress) {
 
-        // email must be unique
-        if(userRepository.existsByEmail(createAdmin.email())){
-            throw new RuntimeException("Email Already Exists");
-        }
-        // username must be unique
-        if(userRepository.existsByUsername(createAdmin.username())){
-            throw new RuntimeException("Username Already Exists");
+        if (userRepository.existsByEmail(createAdmin.email())) {
+            throw new RuntimeException("Email already exists.");
         }
 
-        // check if a role passed by the front end is on database
+        if (userRepository.existsByUsername(createAdmin.username())) {
+            throw new RuntimeException("Username already exists.");
+        }
+
         Role selectedRole = roleRepository.findById(createAdmin.roleId())
-                .orElseThrow(() -> new RuntimeException("Selected Role not found."));
+                .orElseThrow(() -> new RuntimeException("Selected role not found."));
 
-
-        // set all departments if root admin choose all departments
-        // and if not, please provide a list of ids in department that created admin can access
         Set<Department> departments = new HashSet<>();
         if (createAdmin.allDepartments()) {
             departments.addAll(departmentRepository.findAll());
         } else {
             departments.addAll(departmentRepository.findAllById(createAdmin.departmentIds()));
         }
-
 
         User newAdmin = new User();
         newAdmin.setFirstName(createAdmin.firstName());
@@ -86,34 +78,51 @@ public class UserService {
         newAdmin.setAllowedDepartments(departments);
         newAdmin.setStatus(createAdmin.activateImmediately() ? Status.ACTIVE : Status.INACTIVE);
         newAdmin.setFailedAttempts(0);
+        newAdmin.setIsLocked(false);
 
-        //save to database
         User savedAdmin = userRepository.save(newAdmin);
 
-        //audit logs
-        auditLogService.log(
-                actor,
-                null,
-                "ROOT_ADMIN",
-                Severity.INFO,
-                "CREATE_ADMIN",
-                ipAddress,
-                "Created admin account for: " + savedAdmin.getFirstName() + savedAdmin.getLastName() ,
-                null,
-                createAdmin
+        String departmentNames = departments.stream()
+                .map(Department::getName)
+                .collect(Collectors.joining(", "));
+
+        String newState = String.format(
+                "Username: %s | Full Name: %s %s | Role: %s | Departments: [%s]",
+                savedAdmin.getUsername(),
+                savedAdmin.getFirstName(),
+                savedAdmin.getLastName(),
+                selectedRole.getRoleName(),
+                departmentNames
         );
 
+        auditLogService.log(
+                actor,
+                Departments.ADMINISTRATION,
+                "USER_MANAGEMENT",
+                Severity.WARNING,
+                "CREATE_ADMIN",
+                ipAddress,
+                "Root Admin created a new Admin account for " + savedAdmin.getFirstName() + " " + savedAdmin.getLastName(),
+                null,
+                newState
+        );
     }
 
 
+    @Transactional(readOnly = true)
+    public Page<AdminTable> displayAllAdminTables(String search, Status status, int page, int size) {
 
-    @Transactional
-    public Page<AdminTable> displayAllAdminTables(String search, String role, Status status, int page, int size){
-
+        // 1. Setup Pagination & Sorting
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
 
-        Page<User> users = userRepository.findAllAdminsWithFilters(search , role,status, pageable);
+        // 2. Query the Repository (Search at Status na lang ang pinapasa natin) [cite: 2026-03-09]
+        Page<User> users = userRepository.findAllAdminsWithFilters(
+                (search != null && !search.isBlank()) ? search.trim() : null,
+                status,
+                pageable
+        );
 
+        // 3. Map to AdminTable DTO (Null-safe approach) [cite: 2026-03-09]
         return users.map(user -> new AdminTable(
                 user.getId(),
                 user.getUsername(),
@@ -121,10 +130,12 @@ public class UserService {
                 user.getLastName(),
                 user.getEmail(),
                 user.getContactNumber(),
-                user.getRole().getRoleName(),
-                user.getAllowedDepartments().stream().map(Department::getName).collect(Collectors.toSet()),
-                user.getIsLocked(),
-                user.getStatus().name(),
+                user.getRole() != null ? user.getRole().getRoleName() : "N/A",
+                user.getAllowedDepartments().stream()
+                        .map(Department::getName)
+                        .collect(Collectors.toSet()),
+                Boolean.TRUE.equals(user.getIsLocked()),
+                user.getStatus() != null ? user.getStatus().name() : "UNKNOWN",
                 user.getCreatedAt(),
                 user.getLastLoginAt(),
                 user.getLockUntil(),
@@ -133,81 +144,96 @@ public class UserService {
     }
 
 
-
-   //update admin
     @Transactional
     public void updateAdminAccount(UUID userId, UpdateAdmin updateDto, User actor, String ipAddress) {
-
-        //check if id passes is already existing
         User userToEdit = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User to edit not found."));
 
+        AdminTable oldState = mapToAdminTable(userToEdit);
 
-
-        //get all value for audit logs
-        AdminTable oldState = new AdminTable(
-                userToEdit.getId(),
-                userToEdit.getUsername(),
-                userToEdit.getFirstName(),
-                userToEdit.getLastName(),
-                userToEdit.getEmail(),
-
-                userToEdit.getContactNumber(),
-
-                userToEdit.getRole().getRoleName(),
-
-                userToEdit.getAllowedDepartments().stream().map(Department::getName).collect(Collectors.toSet()),
-                userToEdit.getIsLocked(),
-                userToEdit.getStatus().name(),
-                userToEdit.getCreatedAt(),
-                userToEdit.getLastLoginAt(),
-                userToEdit.getLockUntil(),
-                userToEdit.getUpdatedAt()
-        );
-
-        //check if other user use this email
         if (userRepository.existsByEmailAndIdNot(updateDto.email(), userId)) {
-            throw new RuntimeException("Email is already taken by another account.");
+            throw new RuntimeException("Email is already taken.");
         }
-        //check if other user use this username
         if (userRepository.existsByUsernameAndIdNot(updateDto.username(), userId)) {
             throw new RuntimeException("Username is already taken.");
         }
 
-       //updating data from data to database
+        // 3. I-apply ang Updates
         userToEdit.setFirstName(updateDto.firstName());
         userToEdit.setLastName(updateDto.lastName());
         userToEdit.setEmail(updateDto.email());
+        userToEdit.setUsername(updateDto.username());
+        userToEdit.setContactNumber(updateDto.contactNumber());
+
         if (updateDto.password() != null && !updateDto.password().isBlank()) {
             userToEdit.setPassword(passwordEncoder.encode(updateDto.password()));
         }
-        userToEdit.setUsername(updateDto.username());
-        userToEdit.setContactNumber(updateDto.contactNumber());
-        Set<Department> departments = new HashSet<>();
+
+        Set<Department> newDepts = new HashSet<>();
         if (updateDto.allDepartments()) {
-            departments.addAll(departmentRepository.findAll());
+            newDepts.addAll(departmentRepository.findAll());
         } else {
-            departments.addAll(departmentRepository.findAllById(updateDto.departmentIds()));
+            newDepts.addAll(departmentRepository.findAllById(updateDto.departmentIds()));
         }
-        userToEdit.setAllowedDepartments(departments);
+        userToEdit.setAllowedDepartments(newDepts);
 
-        //save update to database
-        userRepository.save(userToEdit);
+        User savedUser = userRepository.save(userToEdit);
+        AdminTable newState = mapToAdminTable(savedUser);
 
-        //audit logs for changes
-        auditLogService.log(
-                actor,
-                null,
-                "USER_MANAGEMENT",
-                Severity.INFO,
-                "UPDATE_ADMIN",
-                ipAddress,
-                "Update admin account for: " + userToEdit.getFirstName() + userToEdit.getLastName() ,
-                oldState,
-                userToEdit
-        );
+        Map<String, Object> changesOld = new HashMap<>();
+        Map<String, Object> changesNew = new HashMap<>();
+
+        compareAndAdd(changesOld, changesNew, "First Name", oldState.firstName(), newState.firstName());
+        compareAndAdd(changesOld, changesNew, "Last Name", oldState.lastName(), newState.lastName());
+        compareAndAdd(changesOld, changesNew, "Email", oldState.email(), newState.email());
+        compareAndAdd(changesOld, changesNew, "Username", oldState.username(), newState.username());
+        compareAndAdd(changesOld, changesNew, "Contact", oldState.contactNumber(), newState.contactNumber());
+        compareAndAdd(changesOld, changesNew, "Departments", oldState.departments(), newState.departments());
+
+        if (!changesNew.isEmpty()) {
+            auditLogService.log(
+                    actor,
+                    Departments.ROOT_ADMIN,
+                    "USER_MANAGEMENT",
+                    Severity.WARNING,
+                    "UPDATE_ADMIN",
+                    ipAddress,
+                    "Updated admin account for: " + savedUser.getFirstName() + " " + savedUser.getLastName(),
+                    changesOld,
+                    changesNew
+            );
+        }
     }
 
+    private void compareAndAdd(Map<String, Object> oldMap, Map<String, Object> newMap, String field, Object oldVal, Object newVal) {
+        if (oldVal == null && newVal == null) return;
+        if (oldVal != null && oldVal.equals(newVal)) return;
+
+        oldMap.put(field, oldVal);
+        newMap.put(field, newVal);
+    }
+
+    private AdminTable mapToAdminTable(User user) {
+        return new AdminTable(
+                user.getId(),
+                user.getUsername(),
+                user.getFirstName(),
+                user.getLastName(),
+                user.getEmail(),
+                user.getContactNumber(),
+                user.getRole().getRoleName(),
+                user.getAllowedDepartments().stream()
+                        .map(Department::getName)
+                        .sorted()
+                        .collect(Collectors.toSet()),
+                user.getIsLocked(),
+                user.getStatus().name(),
+                user.getCreatedAt(),
+                user.getLastLoginAt(),
+                user.getLockUntil(),
+                user.getUpdatedAt()
+        );
+    }
 
     @Transactional
     public void toggleUserLock(UUID userId, boolean lock, User actor, String ip, UserActionRequest request) {
@@ -228,24 +254,27 @@ public class UserService {
         userRepository.save(user);
 
         String lockDuration = request.lockUntil() != null ? request.lockUntil().toString() : "Manual";
-        String logMessage = String.format("%s account for %s. Reason: %s",
-                lock ? "Locked until " + lockDuration : "Unlocked",
-                user.getUsername(),
-                request.reason()
-        );
 
+
+
+        String oldStatus = lock ? "UNLOCKED" : "LOCKED";
+        String newStatus = lock ? "LOCKED" : "UNLOCKED";
+
+        String logMessage = String.format("Account for user %s has been %s.",
+                user.getUsername(),
+                lock ? "LOCKED" : "UNLOCKED");
 
 
         auditLogService.log(
                 actor,
                 Departments.ROOT_ADMIN,
                 "USER_SECURITY",
-                lock ? Severity.WARNING : Severity.INFO,
+                lock ? Severity.LOW : Severity.INFO,
                 lock ? "LOCK_ACCOUNT" : "UNLOCK_ACCOUNT",
                 ip,
                 logMessage,
-                !lock,
-                lock
+                oldStatus,
+                newStatus
         );
     }
 
@@ -257,24 +286,25 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found."));
 
-        //get old status for audit logs
         Status oldStatus = user.getStatus();
 
-        //update new status
         user.setStatus(newStatus);
-        //forward to repository and save to database
         userRepository.save(user);
 
 
         Severity severity = (newStatus == Status.INACTIVE) ? Severity.WARNING : Severity.INFO;
+
+        String logMessage = String.format(" Status updated for user '%s' from %s to %s.",
+                 actor.getUsername(), oldStatus, newStatus);
+
         auditLogService.log(
                 actor,
-                null,
+                Departments.ROOT_ADMIN,
                 "USER_MANAGEMENT",
                 severity,
-                "STATUS_CHANGE",
+                logMessage,
                 ip,
-                "Changed status for " + user.getUsername() + " to " + newStatus + ". Reason: " + reason,
+                reason,
                 oldStatus,
                 newStatus);
     }
@@ -297,39 +327,44 @@ public class UserService {
 
     @Transactional
     public void updateMySettings(User user, UserSettings dto, String ipAddress) {
-        UserSettings oldState = new UserSettings(
-                user.getId(),
-                user.getUsername(),
-                null,
-                user.getEmail(),
-                user.getFirstName(),
-                user.getLastName(),
-                user.getContactNumber()
-        );
+        User managedUser = userRepository.findById(user.getId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
-        user.setFirstName(dto.firstName());
-        user.setLastName(dto.lastName());
-        user.setContactNumber(dto.contactNumber());
+        Map<String, Object> oldData = new LinkedHashMap<>();
+        oldData.put("firstName", managedUser.getFirstName());
+        oldData.put("lastName", managedUser.getLastName());
+        oldData.put("email", managedUser.getEmail());
+        oldData.put("contactNumber", managedUser.getContactNumber());
+
+        managedUser.setFirstName(dto.firstName());
+        managedUser.setLastName(dto.lastName());
+        managedUser.setContactNumber(dto.contactNumber());
 
         if (dto.password() != null && !dto.password().isBlank()) {
-            user.setPassword(passwordEncoder.encode(dto.password()));
+            managedUser.setPassword(passwordEncoder.encode(dto.password()));
         }
 
-        userRepository.save(user);
+        userRepository.save(managedUser);
+
+        Map<String, Object> newData = new LinkedHashMap<>();
+        newData.put("firstName", dto.firstName());
+        newData.put("lastName", dto.lastName());
+        newData.put("email", dto.email());
+        newData.put("contactNumber", dto.contactNumber());
 
         auditLogService.log(
-                user,
-                Departments.ROOT_ADMIN,
+                managedUser,
+                managedUser.getRole().getRoleName().equalsIgnoreCase("ROOT_ADMIN")
+                        ? Departments.ROOT_ADMIN : Departments.ADMINISTRATION,
                 "USER_SETTINGS",
-                Severity.LOW,
+                Severity.INFO,
                 "UPDATE_SELF_PROFILE",
                 ipAddress,
-                "User updated their own profile settings",
-                oldState,
-                dto
+                String.format("User %s updated their own profile details.", managedUser.getUsername()),
+                oldData,
+                newData
         );
     }
-
 
 
 }

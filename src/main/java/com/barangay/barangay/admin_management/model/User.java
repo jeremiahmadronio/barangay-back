@@ -2,6 +2,7 @@
 package com.barangay.barangay.admin_management.model;
 
 import com.barangay.barangay.department.model.Department;
+import com.barangay.barangay.permission.model.Permission;
 import com.barangay.barangay.role.model.Role;
 import com.barangay.barangay.enumerated.Status;
 import jakarta.persistence.*;
@@ -32,11 +33,11 @@ public class User {
     private String username;
     @Column(nullable = false)
     private String password;
-    @Column(unique = true)
+    @Column(unique = true, columnDefinition = "TEXT")
     private String email;
-    @Column(length = 100, nullable = false)
+    @Column(length = 100, nullable = false , columnDefinition = "TEXT")
     private String firstName;
-    @Column(length = 100, nullable = false)
+    @Column(length = 100, nullable = false , columnDefinition = "TEXT")
     private String lastName;
     @Column(length = 15)
     private String contactNumber;
@@ -76,11 +77,23 @@ public class User {
 
 
 
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+            name = "user_permissions",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "permission_id")
+    )
+    private Set<Permission> customPermissions = new HashSet<>();
+
+
+
     @Column(name = "mfa_code")
     private String mfaCode;
 
     @Column(name = "mfa_expiry")
     private LocalDateTime mfaExpiry;
+
+
 
 
 

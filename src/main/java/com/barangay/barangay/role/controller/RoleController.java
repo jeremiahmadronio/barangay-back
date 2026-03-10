@@ -21,4 +21,9 @@ public class RoleController {
     public ResponseEntity<List<RoleOptions>> getAdminOptions() {
         return ResponseEntity.ok(roleService.getAdminRoleOptions());
     }
+
+    @GetMapping("/staff-options")
+    public ResponseEntity<List<RoleOptions>> getStaffRoleOptions() {
+        return ResponseEntity.ok(roleService.getStaffRoleOptions());
+    }
 }

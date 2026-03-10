@@ -22,4 +22,14 @@ public class RoleService {
                 .map(role -> new RoleOptions(role.getId(), role.getRoleName()))
                 .collect(Collectors.toList());
     }
+
+    @Transactional(readOnly = true)
+    public List<RoleOptions> getStaffRoleOptions() {
+        List<String> excludedRoles = List.of("ROOT_ADMIN", "ADMIN");
+
+        return roleRepository.findAll().stream()
+                .filter(role -> !excludedRoles.contains(role.getRoleName().toUpperCase()))
+                .map(role -> new RoleOptions(role.getId(), role.getRoleName()))
+                .collect(Collectors.toList());
+    }
 }

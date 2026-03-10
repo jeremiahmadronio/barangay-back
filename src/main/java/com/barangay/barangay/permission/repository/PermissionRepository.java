@@ -1,7 +1,6 @@
-package com.barangay.barangay.auth.repository;
+package com.barangay.barangay.permission.repository;
 
-import com.barangay.barangay.auth.model.Permission;
-import org.springframework.data.domain.Limit;
+import com.barangay.barangay.permission.model.Permission;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

@@ -1,7 +1,7 @@
 package com.barangay.barangay.role.model;
 
 
-import com.barangay.barangay.auth.model.Permission;
+import com.barangay.barangay.permission.model.Permission;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -28,13 +28,7 @@ public class Role {
     private String roleName;
 
 
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(
-            name = "role_permissions",
-            joinColumns = @JoinColumn(name = "role_id"),
-            inverseJoinColumns = @JoinColumn(name = "permission_id")
-    )
-    private Set<Permission> permissions = new HashSet<>();
+
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)

@@ -3,11 +3,25 @@ package com.barangay.barangay.security;
 public class SecurityConstants {
 
     public static final String ROLE_ROOT_ADMIN = "ROOT_ADMIN";
+    public static final String ROLE_ADMIN = "ADMIN";
 
 
     public static final String[] PUBLIC_ENDPOINTS = {
             "/api/v1/auth/**",
-            "/error"
+            "/error",
+            "/api/v1/users/{UserId}/lock",
+            "/api/v1/users/update-status",
+            "/api/v1/users/settings-preview",
+            "/api/v1/users/update-settings",
+
+
+    };
+
+
+    public static final String[] ADMIN_ENDPOINTS = {
+            "/api/v1/user-management/**",
+
+
     };
 
     public static final String[] ROOT_ADMIN_ENDPOINTS = {
@@ -17,7 +31,6 @@ public class SecurityConstants {
             //departments endpoint
             "/api/v1/departments/options",
 
-            //root admin dashboard endpoint
             "/api/v1/dashboard/stats",
             "/api/v1/dashboard/activity-overview",
             "/api/v1/dashboard/recent-actions",
@@ -27,10 +40,8 @@ public class SecurityConstants {
             "/api/v1/users/stats",
             "/api/v1/users/admin-table",
             "/api/v1/users/update-admin",
-            "/api/v1/users/{UserId}/lock",
-            "/api/v1/users/update-status",
-            "/api/v1/users/settings-preview",
-            "/api/v1/users/update-settings",
+
+
 
 
     };

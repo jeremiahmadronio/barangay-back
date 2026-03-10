@@ -21,4 +21,9 @@ public class DepartmentController {
     public ResponseEntity<List<DepartmentOptions>> getDepartmentOptions() {
         return ResponseEntity.ok(departmentService.getAllDepartmentOptions());
     }
+
+    @GetMapping("/admin-options")
+    public ResponseEntity<List<DepartmentOptions>> getMyDepartments() {
+        return ResponseEntity.ok(departmentService.getAssignedDepartmentOptions());
+    }
 }

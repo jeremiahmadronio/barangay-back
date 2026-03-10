@@ -34,6 +34,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
                         .requestMatchers(ROOT_ADMIN_ENDPOINTS).hasRole(ROLE_ROOT_ADMIN)
+                        .requestMatchers(ADMIN_ENDPOINTS).hasRole(ROLE_ADMIN)
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session

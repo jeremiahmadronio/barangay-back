@@ -1,4 +1,4 @@
-package com.barangay.barangay.auth.model;
+package com.barangay.barangay.permission.model;
 
 
 import jakarta.persistence.*;

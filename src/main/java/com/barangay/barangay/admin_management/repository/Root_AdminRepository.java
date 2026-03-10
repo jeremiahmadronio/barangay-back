@@ -39,26 +39,34 @@ public interface Root_AdminRepository extends JpaRepository<User, UUID> {
     Long countActiveUsers();
 
     //admin stats
-    @Query("SELECT new com.barangay.barangay.admin_management.dto.AdminStats(" +
-            "COUNT(u), " +
-            "SUM(CASE WHEN u.status = 'ACTIVE' THEN 1 ELSE 0 END)," +
-            "SUM(CASE WHEN u.isLocked = true THEN 1 ELSE 0 END), " +
-            "SUM(CASE WHEN u.status = 'INACTIVE' THEN 1 ELSE 0 END)) " +
-            "FROM User u")
+    @Query("""
+        SELECT new com.barangay.barangay.admin_management.dto.AdminStats(
+            COUNT(u), 
+            SUM(CASE WHEN u.status = com.barangay.barangay.enumerated.Status.ACTIVE THEN 1 ELSE 0 END),
+            SUM(CASE WHEN u.isLocked = true THEN 1 ELSE 0 END),
+            SUM(CASE WHEN u.status = com.barangay.barangay.enumerated.Status.INACTIVE THEN 1 ELSE 0 END)
+        )
+        FROM User u
+        JOIN u.role r
+        WHERE r.roleName = 'ADMIN'
+    """)
     AdminStats getAdminStats();
 
 
     // admin table with pagination and filtering
-    @Query("SELECT u FROM User u " +
-            "WHERE (:search IS NULL OR " +
-            "      LOWER(CAST(u.firstName AS string)) LIKE :search OR " +
-            "      LOWER(CAST(u.lastName AS string)) LIKE :search OR " +
-            "      LOWER(CAST(u.email AS string)) LIKE :search) " +
-            "AND (:roleName IS NULL OR u.role.roleName = :roleName) " +
-            "AND (:status IS NULL OR u.status = :status)")
+    @Query("""
+    SELECT DISTINCT u FROM User u
+    JOIN u.role r
+    WHERE r.roleName = 'ADMIN'
+    AND (:search IS NULL OR (
+          u.firstName ILIKE :search OR 
+          u.lastName ILIKE :search OR 
+          u.email ILIKE :search
+    ))
+    AND (:status IS NULL OR u.status = :status)
+""")
     Page<User> findAllAdminsWithFilters(
             @Param("search") String search,
-            @Param("roleName") String roleName,
             @Param("status") Status status,
             Pageable pageable);
 
