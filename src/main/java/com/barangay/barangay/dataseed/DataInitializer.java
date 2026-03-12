@@ -2,6 +2,14 @@ package com.barangay.barangay.dataseed;
 
 import com.barangay.barangay.audit.model.AuditLog;
 import com.barangay.barangay.audit.repository.AuditLogRepository;
+import com.barangay.barangay.blotter.model.EvidenceType;
+import com.barangay.barangay.blotter.model.IncidentFrequency;
+import com.barangay.barangay.blotter.model.NatureOfComplaint;
+import com.barangay.barangay.blotter.model.RelationshipType;
+import com.barangay.barangay.blotter.repository.EvidenceTypeRepository;
+import com.barangay.barangay.blotter.repository.IncidentFrequencyRepository;
+import com.barangay.barangay.blotter.repository.NatureOfComplaintRepository;
+import com.barangay.barangay.blotter.repository.RelationshipTypeRepository;
 import com.barangay.barangay.department.model.Department;
 import com.barangay.barangay.permission.model.Permission;
 import com.barangay.barangay.role.model.Role;
@@ -39,6 +47,13 @@ public class DataInitializer implements CommandLineRunner {
     private final JdbcTemplate jdbcTemplate;
     private final PasswordEncoder passwordEncoder;
 
+    //blotter
+    private final NatureOfComplaintRepository natureOfComplaintRepository;
+    private final RelationshipTypeRepository relationshipTypeRepository;
+    private final IncidentFrequencyRepository incidentFrequencyRepository;
+    private final EvidenceTypeRepository evidenceTypeRepository;
+
+
     @Override
     @Transactional
     public void run(String... args) {
@@ -64,6 +79,75 @@ public class DataInitializer implements CommandLineRunner {
         createPermIfNotFound("Delete Records (Restricted)");
         createPermIfNotFound("Generate Reports");
         createPermIfNotFound("Issue Certificated");
+
+
+
+        createEvidenceTypeIfNotFound("Medical Certificate");
+        createEvidenceTypeIfNotFound("Medico-Legal Report");
+        createEvidenceTypeIfNotFound("Psychological Evaluation Report");
+        createEvidenceTypeIfNotFound("Dental Record");
+        createEvidenceTypeIfNotFound("Lab Result (Toxicology/X-Ray/etc.)");
+
+        // 2. Testimonial
+        createEvidenceTypeIfNotFound("Affidavit / Sworn Statement");
+        createEvidenceTypeIfNotFound("Complaint Affidavit");
+        createEvidenceTypeIfNotFound("Witness Statement");
+        createEvidenceTypeIfNotFound("Kagawad/Lupon Mediation Agreement");
+        createEvidenceTypeIfNotFound("Police Blotter/Report Referral");
+        createEvidenceTypeIfNotFound("Court Order / Subpoena");
+
+        // 3. Digital
+        createEvidenceTypeIfNotFound("Screenshot (Messenger/Viber/WhatsApp)");
+        createEvidenceTypeIfNotFound("Screenshot (Facebook/Post/Comment)");
+        createEvidenceTypeIfNotFound("Voice/Audio Recording");
+        createEvidenceTypeIfNotFound("Email Print-out");
+        createEvidenceTypeIfNotFound("SMS / Text Message Transcript");
+
+        // 4. Visual
+        createEvidenceTypeIfNotFound("Photograph (Incident Scene)");
+        createEvidenceTypeIfNotFound("Photograph (Physical Injury)");
+        createEvidenceTypeIfNotFound("Photograph (Property Damage)");
+        createEvidenceTypeIfNotFound("CCTV Footage (Digital/USB)");
+        createEvidenceTypeIfNotFound("Dashcam Footage");
+        createEvidenceTypeIfNotFound("Hand-drawn Map or Sketch");
+
+        // 5. Material
+        createEvidenceTypeIfNotFound("Physical Item (Weapon/Tool/etc.)");
+        createEvidenceTypeIfNotFound("Clothing or Personal Belonging");
+        createEvidenceTypeIfNotFound("Illegal Substance (Turned over to Police)");
+        createEvidenceTypeIfNotFound("Actual Damaged Equipment/Part");
+
+        // 6. Financial
+        createEvidenceTypeIfNotFound("Official Receipt / Proof of Payment");
+        createEvidenceTypeIfNotFound("Contract / Lease Agreement");
+        createEvidenceTypeIfNotFound("Land Title / Deed of Sale");
+
+        createEvidenceTypeIfNotFound("Other Supporting Documents/Items");
+
+
+        createNatureIfNotFound("Physical Injury");
+        createNatureIfNotFound("Slander / Oral Defamation");
+        createNatureIfNotFound("Theft");
+        createNatureIfNotFound("Threats");
+        createNatureIfNotFound("Trespassing");
+        createNatureIfNotFound("Debt / Financial Dispute");
+        createNatureIfNotFound("Unjust Vexation");
+        createNatureIfNotFound("Grave Coercion");
+
+
+        // ── Relationship Types (Reference Data) ──────────────────────────────
+        createRelationIfNotFound("Neighbor");
+        createRelationIfNotFound("Relative");
+        createRelationIfNotFound("Family Member");
+        createRelationIfNotFound("Business Partner");
+        createRelationIfNotFound("Former Spouse / Partner");
+        createRelationIfNotFound("Stranger");
+        createRelationIfNotFound("Landlord / Tenant");
+
+        // ── Incident Frequencies (Reference Data) ────────────────────────────
+        createFrequencyIfNotFound("First Time");
+        createFrequencyIfNotFound("Second Time");
+        createFrequencyIfNotFound("Habitual / Third Time+");
 
         // ── Roles ────────────────────────────────────────────────────────────
         Role rootRole = roleRepository.findByRoleName("ROOT_ADMIN")
@@ -210,6 +294,38 @@ public class DataInitializer implements CommandLineRunner {
             Role role = new Role();
             role.setRoleName(name);
             roleRepository.save(role);
+        }
+    }
+
+    private void createNatureIfNotFound(String name) {
+        if (natureOfComplaintRepository.findByName(name).isEmpty()) {
+            NatureOfComplaint nature = new NatureOfComplaint();
+            nature.setName(name);
+            natureOfComplaintRepository.save(nature);
+        }
+    }
+
+    private void createRelationIfNotFound(String name) {
+        if (relationshipTypeRepository.findByName(name).isEmpty()) {
+            RelationshipType type = new RelationshipType();
+            type.setName(name);
+            relationshipTypeRepository.save(type);
+        }
+    }
+
+    private void createFrequencyIfNotFound(String label) {
+        if (incidentFrequencyRepository.findByLabel(label).isEmpty()) {
+            IncidentFrequency freq = new IncidentFrequency();
+            freq.setLabel(label);
+            incidentFrequencyRepository.save(freq);
+        }
+    }
+
+    private void createEvidenceTypeIfNotFound(String name) {
+        if (evidenceTypeRepository.findByTypeName(name).isEmpty()) {
+            EvidenceType type = new EvidenceType();
+            type.setTypeName(name);
+            evidenceTypeRepository.save(type);
         }
     }
 }

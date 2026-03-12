@@ -1,0 +1,49 @@
+package com.barangay.barangay.blotter.controller;
+
+import com.barangay.barangay.admin_management.model.User;
+import com.barangay.barangay.audit.service.IpAddressUtils;
+import com.barangay.barangay.blotter.dto.RecordMinutesRequest;
+import com.barangay.barangay.blotter.dto.ScheduleHearingRequest;
+import com.barangay.barangay.blotter.service.HearingService;
+import com.barangay.barangay.security.CustomUserDetails;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+
+@RestController
+@RequestMapping("/api/v1/hearing")
+@RequiredArgsConstructor
+public class HearingController {
+
+    private final HearingService hearingService;
+
+
+    @PostMapping("/schedule-hearing")
+    public ResponseEntity<?> scheduleHearing(
+            @Valid @RequestBody ScheduleHearingRequest dto,
+            @AuthenticationPrincipal CustomUserDetails officer,
+            HttpServletRequest request) {
+
+        String ipAddress = IpAddressUtils.getClientIp(request);
+
+        hearingService.scheduleNewHearing(dto, officer.user(), ipAddress);
+        return ResponseEntity.ok("Successfully scheduled new hearing");
+    }
+
+
+    @PostMapping("/record-minutes")
+    public ResponseEntity<?> recordHearingMinutes(
+          @Valid @RequestBody  RecordMinutesRequest dto,
+            @AuthenticationPrincipal CustomUserDetails officer,
+            HttpServletRequest request ){
+
+        String ipAddress = IpAddressUtils.getClientIp(request);
+        hearingService.recordHearingMinutes(dto, officer.user(), ipAddress);
+        return ResponseEntity.ok("Successfully recorded new hearing");
+    }
+
+}

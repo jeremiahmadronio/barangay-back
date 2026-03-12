@@ -3,6 +3,8 @@ package com.barangay.barangay.admin_management.repository;
 import com.barangay.barangay.enumerated.Status;
 import com.barangay.barangay.admin_management.dto.AdminStats;
 import com.barangay.barangay.admin_management.model.User;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -70,4 +72,8 @@ public interface Root_AdminRepository extends JpaRepository<User, UUID> {
             @Param("status") Status status,
             Pageable pageable);
 
-}
+    @Query("SELECT u FROM User u " +
+            "JOIN FETCH u.role " +
+            "LEFT JOIN FETCH u.allowedDepartments " +
+            "WHERE u.email = :email")
+    Optional<User> findByEmailWithDepartments(@Param("email") String email);}

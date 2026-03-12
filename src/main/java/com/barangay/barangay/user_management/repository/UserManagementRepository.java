@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -98,4 +99,8 @@ public interface UserManagementRepository extends JpaRepository<User, UUID> {
             @Param("deptName") String deptName,
             Pageable pageable
     );
+
+
+    @Query("SELECT u FROM User u LEFT JOIN FETCH u.allowedDepartments WHERE u.id = :id")
+    Optional<User> findByIdWithDepartments(@Param("id") UUID id);
 }

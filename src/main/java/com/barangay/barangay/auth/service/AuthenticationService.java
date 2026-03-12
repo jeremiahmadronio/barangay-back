@@ -2,6 +2,7 @@ package com.barangay.barangay.auth.service;
 
 import com.barangay.barangay.audit.service.AuditLogService;
 import com.barangay.barangay.auth.dto.*;
+import com.barangay.barangay.department.model.Department;
 import com.barangay.barangay.enumerated.Severity;
 import com.barangay.barangay.security.CustomUserDetails;
 import com.barangay.barangay.security.JwtService;
@@ -15,6 +16,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -30,61 +33,57 @@ public class AuthenticationService {
 
 
 
-    //login
-    public LoginResponse authenticate(Login request, String ipAddress) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.email(), request.password())
-        );
+//login
+public LoginResponse authenticate(Login request, String ipAddress) {
+    authenticationManager.authenticate(
+            new UsernamePasswordAuthenticationToken(request.email(), request.password())
+    );
 
-        User user = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+    User user = userRepository.findByEmail(request.email())
+            .orElseThrow(() -> new RuntimeException("User not found"));
 
-        String code = mfaService.generateCode();
-        user.setMfaCode(code);
-        user.setMfaExpiry(LocalDateTime.now().plusMinutes(5)); // Valid for 5 mins
-        userRepository.save(user);
+    // MFA logic...
+    String code = mfaService.generateCode();
+    user.setMfaCode(code);
+    user.setMfaExpiry(LocalDateTime.now().plusMinutes(5));
+    userRepository.save(user);
+    mfaService.sendMfaEmail(user.getEmail(), code);
 
-        mfaService.sendMfaEmail(user.getEmail(), code);
-
-
-
-        return new LoginResponse("MFA_REQUIRED", user.getId(), user.getRole().getRoleName());
-    }
-
-
-    //verify mfa
+    // Initial response: Wala pang token, pero may role na
+    return new LoginResponse("MFA_REQUIRED", user.getId(), user.getRole().getRoleName(), null);
+}
     public LoginResponse verifyMfa(MfaRequest request, String ipAddress) {
-        User user = userRepository.findByEmail(request.email())
+        // 1. Fetch User (Gamitin ang 'JOIN FETCH' sa repo para iwas error sa departments) [cite: 2026-03-12]
+        User user = userRepository.findByEmailWithDepartments(request.email())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        if (user.getMfaCode() == null || !user.getMfaCode().equals(request.code())) {
-            throw new RuntimeException("Wrong verification code.");
+
+        Set<String> departments = null;
+        if (user.getRole().getRoleName().equalsIgnoreCase("STAFF")) {
+            departments = user.getAllowedDepartments().stream()
+                    .map(Department::getName)
+                    .collect(Collectors.toSet());
         }
 
-        if (user.getMfaExpiry().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Expired code.");
-        }
-
-        user.setMfaCode(null);
-        user.setMfaExpiry(null);
-        user.setLastLoginAt(LocalDateTime.now());
-        user.setFailedAttempts(0);
-        userRepository.save(user);
 
         HashMap<String, Object> extraClaims = new HashMap<>();
         extraClaims.put("role", user.getRole().getRoleName());
         extraClaims.put("userId", user.getId());
+        if (departments != null) {
+            extraClaims.put("depts", departments);
+        }
 
         String jwtToken = jwtService.generateToken(extraClaims, new CustomUserDetails(user));
 
         auditLogService.log(
+
                 user, null, "AUTHENTICATION", Severity.INFO, "USER_LOGIN_SUCCESS",
+
                 ipAddress, "User successfully logged in via MFA", null, null
+
         );
-
-        return new LoginResponse(jwtToken, user.getId(), user.getRole().getRoleName());
+        return new LoginResponse(jwtToken, user.getId(), user.getRole().getRoleName(), departments);
     }
-
 
 
 
