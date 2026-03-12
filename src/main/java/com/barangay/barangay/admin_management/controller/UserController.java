@@ -27,7 +27,6 @@ import java.util.UUID;
         private final UserService userService;
         private final Root_AdminRepository userRepository;
 
-        //Creating admin account endpoint
         @PostMapping("/create-admin")
         public ResponseEntity<String> createAdmin(
                 @Valid

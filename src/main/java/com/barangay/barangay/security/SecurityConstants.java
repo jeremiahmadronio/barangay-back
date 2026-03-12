@@ -40,15 +40,12 @@ public class SecurityConstants {
             "/api/v1/users/stats",
             "/api/v1/users/admin-table",
             "/api/v1/users/update-admin",
-
-
-
-
     };
 
     public static final String[] ALLOWED_ORIGINS = {
             "http://localhost:5173",
-            "http://localhost:3000"
+            "http://localhost:3000",
+            "https://baranggay-management.vercel.app/"
     };
 
     public static final String[] ALLOWED_METHODS = {"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"};
