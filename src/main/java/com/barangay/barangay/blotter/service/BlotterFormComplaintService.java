@@ -48,20 +48,9 @@ public class BlotterFormComplaintService {
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Officer has no assigned department."));
 
-        // 1. SECURITY & PERMISSION CHECK
         validateOfficerAccess(managedOfficer);
 
-        // 2. SAVE COMPLAINANT (People Table)
-        People complainantPerson = new People();
-        complainantPerson.setFirstName(dto.firstName());
-        complainantPerson.setLastName(dto.lastName());
-        complainantPerson.setMiddleName(dto.middleName());
-        complainantPerson.setContactNumber(dto.contactNumber());
-        complainantPerson.setCompleteAddress(dto.completeAddress());
-        complainantPerson.setAge(dto.age() != null ? dto.age().shortValue() : null);
-        complainantPerson.setGender(dto.gender());
-        complainantPerson.setCivilStatus(dto.civilStatus());
-        complainantPerson.setEmail(dto.email());
+        People complainantPerson = getPeople(dto);
 
         peopleRepository.save(complainantPerson);
 
@@ -145,6 +134,20 @@ public class BlotterFormComplaintService {
         return blotter.getBlotterNumber();
     }
 
+    private static People getPeople(RecordBlotterEntry dto) {
+        People complainantPerson = new People();
+        complainantPerson.setFirstName(dto.firstName());
+        complainantPerson.setLastName(dto.lastName());
+        complainantPerson.setMiddleName(dto.middleName());
+        complainantPerson.setContactNumber(dto.contactNumber());
+        complainantPerson.setCompleteAddress(dto.completeAddress());
+        complainantPerson.setAge(dto.age() != null ? dto.age().shortValue() : null);
+        complainantPerson.setGender(dto.gender());
+        complainantPerson.setCivilStatus(dto.civilStatus());
+        complainantPerson.setEmail(dto.email());
+        return complainantPerson;
+    }
+
 
     @Transactional
     public String fileFormalComplaint(FormalComplaintEntry dto, User officer, String ipAddress) {
@@ -159,16 +162,7 @@ public class BlotterFormComplaintService {
                 .orElseThrow(() -> new RuntimeException("Officer has no assigned department."));
 
         // 2. SAVE COMPLAINANT
-        People complainant = new People();
-        complainant.setLastName(dto.complainantLastName());
-        complainant.setFirstName(dto.complainantFirstName());
-        complainant.setMiddleName(dto.complainantMiddleName());
-        complainant.setContactNumber(dto.complainantContact());
-        complainant.setAge(dto.complainantAge() != null ? dto.complainantAge().shortValue() : null);
-        complainant.setGender(dto.complainantGender());
-        complainant.setCompleteAddress(dto.complainantAddress());
-        complainant.setCivilStatus(dto.complainantCivilStatus());
-        complainant.setEmail(dto.complainantEmail());
+        People complainant = getPeople(dto);
         peopleRepository.save(complainant);
 
         BlotterCase blotter = new BlotterCase();
@@ -226,15 +220,7 @@ public class BlotterFormComplaintService {
         cLink.setPerson(complainant);
         complainantRepository.save(cLink);
 
-        People respondentPerson = new People();
-        respondentPerson.setLastName(dto.respondentLastName());
-        respondentPerson.setFirstName(dto.respondentFirstName());
-        respondentPerson.setMiddleName(dto.respondentMiddleName());
-        respondentPerson.setCompleteAddress(dto.respondentAddress());
-        respondentPerson.setContactNumber(dto.respondentContact());
-        respondentPerson.setGender(dto.respondentGender());
-        respondentPerson.setAge(dto.respondentAge());
-        respondentPerson.setCivilStatus(dto.respondentCivilStatus());
+        People respondentPerson = getRespondentPerson(dto);
         peopleRepository.save(respondentPerson);
 
         Respondent rLink = new Respondent();
@@ -280,6 +266,32 @@ public class BlotterFormComplaintService {
         return blotter.getBlotterNumber();
     }
 
+    private static People getRespondentPerson(FormalComplaintEntry dto) {
+        People respondentPerson = new People();
+        respondentPerson.setLastName(dto.respondentLastName());
+        respondentPerson.setFirstName(dto.respondentFirstName());
+        respondentPerson.setMiddleName(dto.respondentMiddleName());
+        respondentPerson.setCompleteAddress(dto.respondentAddress());
+        respondentPerson.setContactNumber(dto.respondentContact());
+        respondentPerson.setGender(dto.respondentGender());
+        respondentPerson.setAge(dto.respondentAge());
+        respondentPerson.setCivilStatus(dto.respondentCivilStatus());
+        return respondentPerson;
+    }
+
+    private static People getPeople(FormalComplaintEntry dto) {
+        People complainant = new People();
+        complainant.setLastName(dto.complainantLastName());
+        complainant.setFirstName(dto.complainantFirstName());
+        complainant.setMiddleName(dto.complainantMiddleName());
+        complainant.setContactNumber(dto.complainantContact());
+        complainant.setAge(dto.complainantAge() != null ? dto.complainantAge().shortValue() : null);
+        complainant.setGender(dto.complainantGender());
+        complainant.setCompleteAddress(dto.complainantAddress());
+        complainant.setCivilStatus(dto.complainantCivilStatus());
+        complainant.setEmail(dto.complainantEmail());
+        return complainant;
+    }
 
 
     private void validateOfficerAccess(User officer) {

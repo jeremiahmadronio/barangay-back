@@ -1,9 +1,9 @@
 package com.barangay.barangay.blotter.dto.reports;
 
 public record ReportsStatsDTO(
-        long totalEntries, double totalEntriesChange,
-        long formalComplaints, double formalChange,
-        long forTheRecord, double recordChange,
-        long referredToLupon, double luponChange
+        long totalEntries, double totalTrend,
+        long formalComplaints, double formalTrend,
+        long forTheRecord, double recordTrend,
+        long referredToLupon, double luponTrend
 ) {
 }
