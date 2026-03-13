@@ -7,6 +7,7 @@ import com.barangay.barangay.blotter.model.Hearing;
 import com.barangay.barangay.blotter.model.HearingMinutes;
 import com.barangay.barangay.blotter.repository.*;
 import com.barangay.barangay.enumerated.CaseStatus;
+import com.barangay.barangay.enumerated.CaseType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -20,6 +21,7 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -155,6 +157,7 @@ public class BlotterServiceViewOnly {
                 remaining,
                 bc.getBlotterNumber(),
                 bc.getStatus(),
+                bc.getStatusRemarks(),
                 bc.getDateFiled(),
 
                 // --- Complainant Info (Safe Navigations) ---
@@ -353,5 +356,34 @@ public class BlotterServiceViewOnly {
                         note.getCreatedAt()
                 ))
                 .toList();
+    }
+
+
+
+    @Transactional(readOnly = true)
+    public DocketStatsDTO getFormalStats() {
+        CaseType formal = CaseType.FORMAL_COMPLAINT;
+
+        Set<CaseStatus> activeStatuses = Set.of(
+                CaseStatus.PENDING,
+                CaseStatus.UNDER_MEDIATION,
+                CaseStatus.UNDER_CONCILIATION,
+                CaseStatus.REFERRED_TO_LUPON
+        );
+
+        Set<CaseStatus> resolvedStatuses = Set.of(
+                CaseStatus.SETTLED,
+                CaseStatus.CERTIFIED_TO_FILE_ACTION,
+                CaseStatus.DISMISSED,
+                CaseStatus.ARCHIVED,
+                CaseStatus.CLOSED
+        );
+
+        return new DocketStatsDTO(
+                blotterRepository.countByCaseType(formal),
+                blotterRepository.countByCaseTypeAndStatusIn(formal, activeStatuses),
+                blotterRepository.countByCaseTypeAndStatusIn(formal, resolvedStatuses),
+                blotterRepository.countByCaseTypeAndStatus(formal, CaseStatus.UNDER_MEDIATION)
+        );
     }
 }

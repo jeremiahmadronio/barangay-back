@@ -18,6 +18,7 @@ public record BlotterDocketViewDTO (
 
         String caseNumber,
         CaseStatus caseStatus,
+        String caseStatusRemarks,
         LocalDateTime dateFiled,
 
 

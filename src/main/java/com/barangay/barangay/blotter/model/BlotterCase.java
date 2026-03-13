@@ -38,6 +38,9 @@ public class BlotterCase {
     @Column(nullable = false)
     private CaseStatus status = CaseStatus.PENDING;
 
+    @Column(columnDefinition = "TEXT")
+    private String statusRemarks;
+
     @Column
     private Boolean isCertified = false;
 
