@@ -7,6 +7,7 @@ import com.barangay.barangay.blotter.dto.RecordBlotterEntry;
 import com.barangay.barangay.blotter.model.*;
 import com.barangay.barangay.blotter.model.EvidenceType;
 import com.barangay.barangay.blotter.repository.*;
+import com.barangay.barangay.department.model.Department;
 import com.barangay.barangay.enumerated.*;
 import com.barangay.barangay.user_management.repository.UserManagementRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -42,6 +43,10 @@ public class BlotterFormComplaintService {
 
         User managedOfficer = UserManagementRepository.findByIdWithDepartments(officer.getId())
                 .orElseThrow(() -> new RuntimeException("Officer not found in database."));
+
+        Department userDept = managedOfficer.getAllowedDepartments().stream()
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Officer has no assigned department."));
 
         // 1. SECURITY & PERMISSION CHECK
         validateOfficerAccess(managedOfficer);
@@ -79,6 +84,7 @@ public class BlotterFormComplaintService {
         blotter.setCaseType(CaseType.FOR_THE_RECORD);
         blotter.setStatus(CaseStatus.RECORDED);
         blotter.setDateFiled(LocalDateTime.now());
+        blotter.setDepartment(userDept);
 
         blotter.setCreatedBy(officer);
         blotter.setReceivingOfficer(managedOfficer);
@@ -148,6 +154,10 @@ public class BlotterFormComplaintService {
                 .orElseThrow(() -> new RuntimeException("Officer not found."));
         validateOfficerAccess(managedOfficer);
 
+        Department userDept = managedOfficer.getAllowedDepartments().stream()
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Officer has no assigned department."));
+
         // 2. SAVE COMPLAINANT
         People complainant = new People();
         complainant.setLastName(dto.complainantLastName());
@@ -167,6 +177,7 @@ public class BlotterFormComplaintService {
         blotter.setStatus(CaseStatus.PENDING);
         blotter.setDateFiled(LocalDateTime.now());
         blotter.setReceivingOfficer(managedOfficer);
+        blotter.setDepartment(userDept);
         blotter.setCreatedBy(managedOfficer);
 
 

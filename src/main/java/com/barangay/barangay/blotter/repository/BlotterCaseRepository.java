@@ -1,6 +1,7 @@
 package com.barangay.barangay.blotter.repository;
 
 import com.barangay.barangay.blotter.model.BlotterCase;
+import com.barangay.barangay.department.model.Department;
 import com.barangay.barangay.enumerated.CaseStatus;
 import com.barangay.barangay.enumerated.CaseType;
 import org.springframework.data.domain.Page;
@@ -22,11 +23,14 @@ public interface BlotterCaseRepository extends JpaRepository<BlotterCase, Long>,
 
     boolean existsByBlotterNumber(String blotterNumber);
 
-    long countByCaseType(CaseType caseType);
+    // Count Formal Complaints by Department
+    long countByCaseTypeAndDepartment(CaseType caseType, Department department);
 
-    long countByCaseTypeAndStatusIn(CaseType caseType, Collection<CaseStatus> statuses);
+    // Count by Status Group AND Department
+    long countByCaseTypeAndStatusInAndDepartment(CaseType caseType, Collection<CaseStatus> statuses, Department department);
 
-    long countByCaseTypeAndStatus(CaseType caseType, CaseStatus status);
+    // Count Specific Status AND Department
+    long countByCaseTypeAndStatusAndDepartment(CaseType caseType, CaseStatus status, Department department);
 
 
     List<BlotterCase> findAllByStatusAndDateFiledBefore(CaseStatus status, LocalDateTime threshold);

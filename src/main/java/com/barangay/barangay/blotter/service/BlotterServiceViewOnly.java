@@ -1,11 +1,13 @@
 package com.barangay.barangay.blotter.service;
 
+import com.barangay.barangay.admin_management.model.User;
 import com.barangay.barangay.blotter.dto.*;
 import com.barangay.barangay.blotter.model.BlotterCase;
 import com.barangay.barangay.blotter.model.CaseNote;
 import com.barangay.barangay.blotter.model.Hearing;
 import com.barangay.barangay.blotter.model.HearingMinutes;
 import com.barangay.barangay.blotter.repository.*;
+import com.barangay.barangay.department.model.Department;
 import com.barangay.barangay.enumerated.CaseStatus;
 import com.barangay.barangay.enumerated.CaseType;
 import lombok.RequiredArgsConstructor;
@@ -38,22 +40,28 @@ public class BlotterServiceViewOnly {
 
     @Transactional(readOnly = true)
     public Page<BlotterSummaryDTO> getPagedBlotters(
+            User officer, // 🔴 Mandatory para sa department isolation
             String search, String status, Long natureId,
             LocalDate start, LocalDate end, Pageable pageable) {
 
-        String forcedStatus = "RECORDED";
+        Department userDept = officer.getAllowedDepartments().stream()
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Unauthorized: No department assigned."));
 
-        Specification<BlotterCase> spec = BlotterRecordsSpecificationsFiltering.buildFilter(search, forcedStatus, natureId, start, end);
+        CaseType targetType = CaseType.FOR_THE_RECORD;
 
-        return blotterRepository.findAll(spec, pageable).map(bc -> new BlotterSummaryDTO(
-                bc.getId(),
-                bc.getBlotterNumber(),
-                bc.getComplainant().getPerson().getFirstName() + " " + bc.getComplainant().getPerson().getLastName(),
-                bc.getRespondent().getPerson().getFirstName() + " " + bc.getRespondent().getPerson().getLastName(),
-                bc.getIncidentDetail().getNatureOfComplaint().getName(),
-                bc.getDateFiled(),
-                bc.getStatus().name()
-        ));
+        Specification<BlotterCase> spec = BlotterRecordsSpecificationsFiltering.buildFormalDocketFilter(
+                search,
+                status,
+                natureId,
+                start,
+                end,
+                userDept.getId(),
+                targetType
+        );
+
+        // 4. SAFE MAPPING: Gamitin ang helper method para hindi mag-crash
+        return blotterRepository.findAll(spec, pageable).map(this::mapToSummaryDTO);
     }
 
 
@@ -107,22 +115,49 @@ public class BlotterServiceViewOnly {
 
     @Transactional(readOnly = true)
     public Page<BlotterSummaryDTO> docketTable(
+            User officer,
             String search, String status, Long natureId,
             LocalDate start, LocalDate end, Pageable pageable) {
 
-        String statusToExclude = "RECORDED";
-        Specification<BlotterCase> spec = BlotterRecordsSpecificationsFiltering.excludeStatus(
-                search, statusToExclude, natureId, start, end);
+        Department userDept = officer.getAllowedDepartments().stream()
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Unauthorized: No department assigned."));
 
-        return blotterRepository.findAll(spec, pageable).map(bc -> new BlotterSummaryDTO(
+        Specification<BlotterCase> spec = BlotterRecordsSpecificationsFiltering.buildFormalDocketFilter(
+                search,
+                status,
+                natureId,
+                start,
+                end,
+                userDept.getId(),
+                CaseType.FORMAL_COMPLAINT
+        );
+
+        return blotterRepository.findAll(spec, pageable).map(this::mapToSummaryDTO);
+    }
+
+    private BlotterSummaryDTO mapToSummaryDTO(BlotterCase bc) {
+        String complainant = (bc.getComplainant() != null && bc.getComplainant().getPerson() != null)
+                ? bc.getComplainant().getPerson().getFirstName() + " " + bc.getComplainant().getPerson().getLastName()
+                : "N/A";
+
+        String respondent = (bc.getRespondent() != null && bc.getRespondent().getPerson() != null)
+                ? bc.getRespondent().getPerson().getFirstName() + " " + bc.getRespondent().getPerson().getLastName()
+                : "N/A";
+
+        String nature = (bc.getIncidentDetail() != null && bc.getIncidentDetail().getNatureOfComplaint() != null)
+                ? bc.getIncidentDetail().getNatureOfComplaint().getName()
+                : "General Record";
+
+        return new BlotterSummaryDTO(
                 bc.getId(),
                 bc.getBlotterNumber(),
-                bc.getComplainant().getPerson().getFirstName() + " " + bc.getComplainant().getPerson().getLastName(),
-                bc.getRespondent().getPerson().getFirstName() + " " + bc.getRespondent().getPerson().getLastName(),
-                bc.getIncidentDetail().getNatureOfComplaint().getName(),
+                complainant,
+                respondent,
+                nature,
                 bc.getDateFiled(),
-                bc.getStatus().name()
-        ));
+                bc.getStatus() != null ? bc.getStatus().name() : "RECORDED"
+        );
     }
 
 
@@ -361,8 +396,12 @@ public class BlotterServiceViewOnly {
 
 
     @Transactional(readOnly = true)
-    public DocketStatsDTO getFormalStats() {
+    public DocketStatsDTO getFormalStatsForUser(User actor) {
         CaseType formal = CaseType.FORMAL_COMPLAINT;
+
+        Department userDept = actor.getAllowedDepartments().stream()
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Unauthorized: No department assigned to your account."));
 
         Set<CaseStatus> activeStatuses = Set.of(
                 CaseStatus.PENDING,
@@ -380,10 +419,10 @@ public class BlotterServiceViewOnly {
         );
 
         return new DocketStatsDTO(
-                blotterRepository.countByCaseType(formal),
-                blotterRepository.countByCaseTypeAndStatusIn(formal, activeStatuses),
-                blotterRepository.countByCaseTypeAndStatusIn(formal, resolvedStatuses),
-                blotterRepository.countByCaseTypeAndStatus(formal, CaseStatus.UNDER_MEDIATION)
+                blotterRepository.countByCaseTypeAndDepartment(formal, userDept),
+                blotterRepository.countByCaseTypeAndStatusInAndDepartment(formal, activeStatuses, userDept),
+                blotterRepository.countByCaseTypeAndStatusInAndDepartment(formal, resolvedStatuses, userDept),
+                blotterRepository.countByCaseTypeAndStatusAndDepartment(formal, CaseStatus.UNDER_MEDIATION, userDept)
         );
     }
 }

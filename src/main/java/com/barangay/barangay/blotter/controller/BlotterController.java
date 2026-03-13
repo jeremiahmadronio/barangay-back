@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -47,30 +48,47 @@ public class BlotterController {
 
     @GetMapping("/record-table")
     public ResponseEntity<Page<BlotterSummaryDTO>> getPagedBlotters(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Long natureId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end,
-            @PageableDefault(size = 10, sort = "dateFiled") Pageable pageable) {
+            @PageableDefault(size = 10, sort = "dateFiled", direction = Sort.Direction.DESC) Pageable pageable) {
 
         return ResponseEntity.ok(
-                blotterServiceViewOnly.getPagedBlotters(search, status, natureId, start, end, pageable)
+                blotterServiceViewOnly.getPagedBlotters(
+                        userDetails.user(),
+                        search,
+                        status,
+                        natureId,
+                        start,
+                        end,
+                        pageable
+                )
         );
     }
 
-
     @GetMapping("/docket-table")
     public ResponseEntity<Page<BlotterSummaryDTO>> getDocketTable(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Long natureId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end,
-            @PageableDefault(size = 10, sort = "dateFiled") Pageable pageable) {
+            @PageableDefault(size = 10, sort = "dateFiled", direction = Sort.Direction.DESC) Pageable pageable) {
 
         return ResponseEntity.ok(
-                blotterServiceViewOnly.docketTable(search, status, natureId, start, end, pageable)
+                blotterServiceViewOnly.docketTable(
+                        userDetails.user(),
+                        search,
+                        status,
+                        natureId,
+                        start,
+                        end,
+                        pageable
+                )
         );
     }
 
@@ -165,8 +183,11 @@ public class BlotterController {
     }
 
     @GetMapping("/docket-stats")
-    public ResponseEntity<DocketStatsDTO> getDocketStats(){
-        return ResponseEntity.ok(blotterServiceViewOnly.getFormalStats());
+    public ResponseEntity<DocketStatsDTO> getDocketStats(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ){
+        return ResponseEntity.ok(blotterServiceViewOnly.getFormalStatsForUser(userDetails.user()));
     }
+
 
 }
