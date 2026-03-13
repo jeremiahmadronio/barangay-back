@@ -18,6 +18,7 @@ public record RecordBlotterEntry(
 
         @NotBlank String respondentFirstName,
         @NotBlank String respondentLastName,
+        String respondentMiddleName,
         String respondentContact,
         String relationshipToComplainant,
         String respondentAddress,

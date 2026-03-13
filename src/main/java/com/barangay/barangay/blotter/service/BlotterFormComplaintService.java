@@ -63,6 +63,7 @@ public class BlotterFormComplaintService {
         People respondentPerson = new People();
         respondentPerson.setFirstName(dto.respondentFirstName());
         respondentPerson.setLastName(dto.respondentLastName());
+        respondentPerson.setMiddleName(dto.respondentMiddleName());
         respondentPerson.setContactNumber(dto.respondentContact());
         respondentPerson.setCompleteAddress(dto.respondentAddress());
         peopleRepository.save(respondentPerson);
