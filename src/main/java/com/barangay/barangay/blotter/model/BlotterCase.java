@@ -59,6 +59,12 @@ public class BlotterCase {
     @JoinColumn(name = "created_by")
     private User createdBy;
 
+    @Column
+    private LocalDateTime referredToLuponAt;
+
+    @Column
+    private Boolean luponExtended = false;
+
     @CreationTimestamp
     @Column(updatable = false, nullable = false)
     private LocalDateTime createdAt;

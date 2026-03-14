@@ -7,21 +7,20 @@ import com.barangay.barangay.blotter.constant.NatureOfComplaintConstants;
 import com.barangay.barangay.blotter.dto.AddCaseNoteRequest;
 import com.barangay.barangay.blotter.dto.EvidenceOptionDTO;
 import com.barangay.barangay.blotter.dto.NatureOptionDTO;
+import com.barangay.barangay.blotter.dto.Records.FtrSummaryStatsDTO;
 import com.barangay.barangay.blotter.dto.UpdateStatusDTO;
 import com.barangay.barangay.blotter.model.*;
 import com.barangay.barangay.blotter.repository.*;
-import com.barangay.barangay.enumerated.CaseStatus;
-import com.barangay.barangay.enumerated.Departments;
-import com.barangay.barangay.enumerated.Severity;
-import com.barangay.barangay.enumerated.TimelineEventType;
+import com.barangay.barangay.department.model.Department;
+import com.barangay.barangay.enumerated.*;
 import com.barangay.barangay.user_management.repository.UserManagementRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -195,6 +194,67 @@ public class BlotterService {
                         nature.getName()
                 ))
                 .toList();
+    }
+
+
+
+
+    @Transactional(readOnly = true)
+    public FtrSummaryStatsDTO getFtrDashboardStats(User officer) {
+        Long deptId = officer.getAllowedDepartments().stream()
+                .findFirst()
+                .map(Department::getId)
+                .orElseThrow(() -> new RuntimeException("No department assigned."));
+
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime startThisMonth = now.withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
+        LocalDateTime startLastMonth = startThisMonth.minusMonths(1);
+
+        long curFtr = blotterCaseRepository.countTotalFtr(deptId, startThisMonth, now);
+        long prevFtr = blotterCaseRepository.countTotalFtr(deptId, startLastMonth, startThisMonth.minusSeconds(1));
+
+        long curEscalated = blotterCaseRepository.countEscalatedFtr(deptId, startThisMonth, now);
+        long prevEscalated = blotterCaseRepository.countEscalatedFtr(deptId, startLastMonth, startThisMonth.minusSeconds(1));
+
+        // 4. Escalation Formula Calculation
+        double escalationRate = 0.0;
+        if (curFtr > 0) {
+            escalationRate = ((double) curEscalated / curFtr) * 100.0;
+        }
+
+        List<LocalTime> incidentTimes = blotterCaseRepository.findFtrIncidentTimesThisMonth(deptId, startThisMonth);
+
+        long morning = 0, afternoon = 0, evening = 0, lateNight = 0;
+        for (LocalTime time : incidentTimes) {
+            int hour = time.getHour();
+            if (hour >= 6 && hour < 12) morning++;
+            else if (hour >= 12 && hour < 18) afternoon++;
+            else if (hour >= 18 && hour < 23) evening++;
+            else lateNight++;
+        }
+
+        long maxCount = morning;
+        String peakShift = "Morning (6 AM - 12 PM)";
+
+        if (afternoon > maxCount) { maxCount = afternoon; peakShift = "Afternoon (12 PM - 6 PM)"; }
+        if (evening > maxCount) { maxCount = evening; peakShift = "Evening (6 PM - 12 AM)"; }
+        if (lateNight > maxCount) { maxCount = lateNight; peakShift = "Late Night (12 AM - 6 AM)"; }
+
+        if (incidentTimes.isEmpty()) {
+            peakShift = "No Data Yet";
+        }
+
+        return new FtrSummaryStatsDTO(
+                curFtr, calculateTrend(curFtr, prevFtr),
+                curEscalated, calculateTrend(curEscalated, prevEscalated),
+                escalationRate,
+                peakShift, maxCount
+        );
+    }
+
+    private double calculateTrend(long current, long previous) {
+        if (previous == 0) return current > 0 ? 100.0 : 0.0;
+        return ((double) (current - previous) / previous) * 100.0;
     }
 
 

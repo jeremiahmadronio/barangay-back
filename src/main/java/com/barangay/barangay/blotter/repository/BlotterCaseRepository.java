@@ -14,6 +14,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -45,6 +46,35 @@ public interface BlotterCaseRepository extends JpaRepository<BlotterCase, Long>,
     long countByDepartmentAndCaseTypeAndStatus(Department dept, CaseType type, CaseStatus status);
 
 
+
+
+    // Bilangin lahat ng nagpa-record (FTR)
+    @Query("""
+        SELECT COUNT(bc) FROM BlotterCase bc 
+        WHERE bc.department.id = :deptId 
+          AND bc.caseType = 'FOR_THE_RECORD' 
+          AND bc.createdAt >= :startDate AND bc.createdAt <= :endDate
+    """)
+    long countTotalFtr(@Param("deptId") Long deptId, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    @Query("""
+        SELECT COUNT(bc) FROM BlotterCase bc 
+        WHERE bc.department.id = :deptId 
+          AND bc.caseType = 'FOR_THE_RECORD' 
+          AND bc.status = 'ELEVATED_TO_FORMAL' 
+          AND bc.createdAt >= :startDate AND bc.createdAt <= :endDate
+    """)
+    long countEscalatedFtr(@Param("deptId") Long deptId, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    @Query("""
+        SELECT bc.incidentDetail.timeOfIncident 
+        FROM BlotterCase bc 
+        WHERE bc.department.id = :deptId 
+          AND bc.caseType = 'FOR_THE_RECORD'
+          AND bc.createdAt >= :startDate
+          AND bc.incidentDetail.timeOfIncident IS NOT NULL
+    """)
+    List<LocalTime> findFtrIncidentTimesThisMonth(@Param("deptId") Long deptId, @Param("startDate") LocalDateTime startDate);
 
     @Query("""
         SELECT new com.barangay.barangay.blotter.dto.reports.NatureStatDTO(

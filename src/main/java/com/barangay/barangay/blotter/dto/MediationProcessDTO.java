@@ -1,6 +1,5 @@
 package com.barangay.barangay.blotter.dto;
 
-import java.time.LocalDate;
 
 public record MediationProcessDTO (
         boolean stepCaseReceived,

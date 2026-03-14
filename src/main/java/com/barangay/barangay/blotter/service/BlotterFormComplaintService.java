@@ -76,6 +76,7 @@ public class BlotterFormComplaintService {
         blotter.setDepartment(userDept);
 
         blotter.setCreatedBy(officer);
+        blotter.setCertifiedAt(LocalDateTime.now());
         blotter.setReceivingOfficer(managedOfficer);
         blotter.setCreatedBy(managedOfficer);
         managedOfficer.getAllowedDepartments().stream()
@@ -172,6 +173,7 @@ public class BlotterFormComplaintService {
         blotter.setDateFiled(LocalDateTime.now());
         blotter.setReceivingOfficer(managedOfficer);
         blotter.setDepartment(userDept);
+        blotter.setCertifiedAt(LocalDateTime.now());
         blotter.setCreatedBy(managedOfficer);
 
 

@@ -2,7 +2,7 @@ package com.barangay.barangay.blotter.controller;
 
 import com.barangay.barangay.audit.service.IpAddressUtils;
 import com.barangay.barangay.blotter.dto.*;
-import com.barangay.barangay.blotter.service.BlotterFormComplaintService;
+import com.barangay.barangay.blotter.dto.Records.FtrSummaryStatsDTO;
 import com.barangay.barangay.blotter.service.BlotterService;
 import com.barangay.barangay.blotter.service.BlotterServiceViewOnly;
 import com.barangay.barangay.security.CustomUserDetails;
@@ -14,15 +14,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/blotter")
@@ -187,6 +184,13 @@ public class BlotterController {
             @AuthenticationPrincipal CustomUserDetails userDetails
     ){
         return ResponseEntity.ok(blotterServiceViewOnly.getFormalStatsForUser(userDetails.user()));
+    }
+
+    @GetMapping("/records-stats")
+    public ResponseEntity<FtrSummaryStatsDTO> getRecordsSummary(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ){
+        return ResponseEntity.ok(blotterService.getFtrDashboardStats(userDetails.user()));
     }
 
 

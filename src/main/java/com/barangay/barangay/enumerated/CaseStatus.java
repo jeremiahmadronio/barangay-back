@@ -11,6 +11,7 @@ public enum CaseStatus {
     // 3. Automated/Timeout State
     EXPIRED_UNACTIONED, // Na-stuck sa Pending/Mediation nang walang galaw (15-day limit)
 
+    ELEVATED_TO_FORMAL,
     // 4. Successful End States
     SETTLED,            // May areglong nangyari (Success!)
     RECORDED,           // Para sa "For the Record" cases lang
