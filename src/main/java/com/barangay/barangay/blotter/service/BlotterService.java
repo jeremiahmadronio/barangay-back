@@ -106,35 +106,36 @@ public class BlotterService {
             );
 
         }
+    private void validateTransition(CaseStatus current, CaseStatus next) {
+        if (current == next) throw new RuntimeException("Status is already " + next);
 
-        private void validateTransition(CaseStatus current, CaseStatus next) {
-            if (current == next) throw new RuntimeException("Status is already " + next);
 
-            switch (current) {
-                case PENDING -> {
-                    if (next != CaseStatus.UNDER_MEDIATION &&
-                            next != CaseStatus.RECORDED &&
-                            next != CaseStatus.DISMISSED) {
-                        throw new RuntimeException("Invalid transition. From Pending, status must move to Under Mediation, Recorded, or Dismissed.");
-                    }
+        if (next == CaseStatus.ELEVATED_TO_FORMAL) {
+            if (current == CaseStatus.RECORDED) {
+                throw new RuntimeException("Cannot escalate: This case is already RECORDED and cannot be modified.");
+            }
+            return;
+        }
+
+        switch (current) {
+            case PENDING -> {
+                if (next != CaseStatus.UNDER_MEDIATION &&
+                        next != CaseStatus.RECORDED &&
+                        next != CaseStatus.DISMISSED &&
+                        next != CaseStatus.ELEVATED_TO_FORMAL) {
+                    throw new RuntimeException("Invalid transition from Pending.");
                 }
-                case UNDER_MEDIATION -> {
-                    if (next == CaseStatus.PENDING) {
-                        throw new RuntimeException("Cannot revert status to Pending once mediation has started.");
-                    }
-                }
-                case SETTLED, DISMISSED, CERTIFIED_TO_FILE_ACTION, CLOSED, ARCHIVED -> {
-                    throw new RuntimeException("This status is final and cannot be modified.");
-                }
-                case EXPIRED_UNACTIONED -> {
-                    if (next != CaseStatus.REFERRED_TO_LUPON && next != CaseStatus.DISMISSED) {
-                        throw new RuntimeException("Case has expired. It must be referred to Lupon or dismissed.");
-                    }
+            }
+            case RECORDED, SETTLED, DISMISSED, CERTIFIED_TO_FILE_ACTION, CLOSED, ARCHIVED -> {
+                throw new RuntimeException("This status is final and cannot be modified.");
+            }
+            case EXPIRED_UNACTIONED -> {
+                if (next != CaseStatus.REFERRED_TO_LUPON && next != CaseStatus.DISMISSED) {
+                    throw new RuntimeException("Case has expired.");
                 }
             }
         }
-
-
+    }
 
     private void validateOfficerAccess(User officer) {
 
