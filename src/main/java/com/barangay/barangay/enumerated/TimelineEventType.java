@@ -10,5 +10,6 @@ public enum TimelineEventType {
     CASE_DISMISSED,
     STATUS_CHANGED,
     NOTE_ADDED,
-    DOCUMENT_GENERATED
+    DOCUMENT_GENERATED,
+    ESCALATED
 }

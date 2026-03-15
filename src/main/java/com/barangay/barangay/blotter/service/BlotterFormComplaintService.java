@@ -268,6 +268,147 @@ public class BlotterFormComplaintService {
         return blotter.getBlotterNumber();
     }
 
+
+
+    @Transactional
+    public String escalateToFormalComplaint(String sourceBlotterNumber, FormalComplaintEntry dto, User officer, String ipAddress) {
+
+        // 1. RE-FETCH & SECURITY
+        User managedOfficer = UserManagementRepository.findByIdWithDepartments(officer.getId())
+                .orElseThrow(() -> new RuntimeException("Officer not found."));
+        validateOfficerAccess(managedOfficer);
+
+        Department userDept = managedOfficer.getAllowedDepartments().stream()
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Officer has no assigned department."));
+
+        // 2. FETCH & UPDATE EXISTING BLOTTER (ESCALATION PROCESS)
+        BlotterCase existingBlotter = blotterRepository.findByBlotterNumber(sourceBlotterNumber)
+                .orElseThrow(() -> new RuntimeException("Source Blotter not found: " + sourceBlotterNumber));
+
+        // Palitan ang status ng lumang blotter
+        // (Siguraduhing tama ang Enum name mo dito, pwedeng ESCALATED o ELEVATED_TO_FORMAL)
+        existingBlotter.setStatus(CaseStatus.ELEVATED_TO_FORMAL);
+        blotterRepository.save(existingBlotter);
+
+        // I-log sa Timeline ng lumang blotter na na-escalate siya
+        CaseTimeline oldTimeline = new CaseTimeline();
+        oldTimeline.setBlotterCase(existingBlotter);
+        oldTimeline.setEventType(TimelineEventType.ESCALATED); // Gamitin ang tamang Enum mo
+        oldTimeline.setTitle("Escalated to Formal Complaint");
+        oldTimeline.setDescription("Case was escalated to a formal complaint by " + managedOfficer.getLastName());
+        oldTimeline.setPerformedBy(managedOfficer);
+        caseTimeLineRepository.save(oldTimeline);
+
+        // 3. CREATE NEW FORMAL COMPLAINT RECORD
+        People complainant = getPeople(dto);
+        peopleRepository.save(complainant);
+
+        BlotterCase newBlotter = new BlotterCase();
+        newBlotter.setBlotterNumber(generateBlotterNumber());
+        newBlotter.setCaseType(CaseType.FORMAL_COMPLAINT);
+        newBlotter.setStatus(CaseStatus.PENDING);
+        newBlotter.setDateFiled(LocalDateTime.now());
+        newBlotter.setReceivingOfficer(managedOfficer);
+        newBlotter.setDepartment(userDept);
+        newBlotter.setCertifiedAt(LocalDateTime.now());
+        newBlotter.setCreatedBy(managedOfficer);
+        blotterRepository.save(newBlotter);
+
+        // 4. TIMELINE PARA SA BAGONG BLOTTER
+        CaseTimeline newTimeline = new CaseTimeline();
+        newTimeline.setBlotterCase(newBlotter);
+        newTimeline.setEventType(TimelineEventType.CASE_FILED);
+        newTimeline.setTitle("Formal Complaint Created");
+        newTimeline.setDescription("Created from escalation of blotter: " + sourceBlotterNumber);
+        newTimeline.setPerformedBy(managedOfficer);
+        caseTimeLineRepository.save(newTimeline);
+
+        // 5. EVIDENCE RECORDS
+        for (String input : dto.evidenceTypeIds()) {
+            EvidenceType eType;
+            if (input.matches("-?\\d+(\\.\\d+)?")) {
+                Long id = Long.parseLong(input);
+                eType = evidenceTypeRepository.findById(id)
+                        .orElseGet(() -> {
+                            EvidenceType newType = new EvidenceType();
+                            newType.setTypeName(input);
+                            return evidenceTypeRepository.save(newType);
+                        });
+            } else {
+                eType = evidenceTypeRepository.findByTypeName(input)
+                        .orElseGet(() -> {
+                            EvidenceType newType = new EvidenceType();
+                            newType.setTypeName(input);
+                            return evidenceTypeRepository.save(newType);
+                        });
+            }
+            EvidenceRecord er = new EvidenceRecord();
+            er.setBlotterCase(newBlotter);
+            er.setType(eType);
+            er.setReceivedBy(managedOfficer);
+            evidenceRecordRepository.save(er);
+        }
+
+        // 6. SAVE COMPLAINANT LINK
+        Complainant cLink = new Complainant();
+        cLink.setBlotterCase(newBlotter);
+        cLink.setPerson(complainant);
+        complainantRepository.save(cLink);
+
+        // 7. SAVE RESPONDENT LINK
+        People respondentPerson = getRespondentPerson(dto);
+        peopleRepository.save(respondentPerson);
+
+        Respondent rLink = new Respondent();
+        rLink.setBlotterCase(newBlotter);
+        rLink.setPerson(respondentPerson);
+        RelationshipType relType = relationshipTypeRepository.findByNameIgnoreCase(dto.relationshipTypeName())
+                .orElseGet(() -> {
+                    RelationshipType newType = new RelationshipType();
+                    newType.setName(dto.relationshipTypeName().trim());
+                    return relationshipTypeRepository.save(newType);
+                });
+        rLink.setDateOfBirth(dto.respondentDob());
+        rLink.setAlias(dto.respondentAlias());
+        rLink.setOccupation(dto.respondentOccupation());
+        rLink.setRelationshipType(relType);
+        respondentRepository.save(rLink);
+
+        // 8. INCIDENT DETAILS & FREQUENCY (BUG FIXED HERE!)
+        IncidentDetail incident = new IncidentDetail();
+        incident.setBlotterCase(newBlotter);
+        incident.setNatureOfComplaint(natureRepository.findById(dto.natureOfComplaintId())
+                .orElseThrow(() -> new RuntimeException("Nature not found")));
+        incident.setDateOfIncident(dto.dateOfIncident());
+        incident.setTimeOfIncident(dto.timeOfIncident());
+        incident.setPlaceOfIncident(dto.placeOfIncident());
+        incident.setInjuriesDamagesDescription(dto.descriptionOfInjuries());
+
+
+        IncidentFrequency frequency = incidentFrequencyRepository.findByLabelIgnoreCase(dto.frequencyOfIncident())
+                .orElseGet(() -> {
+                    IncidentFrequency newFreq = new IncidentFrequency();
+                    newFreq.setLabel(dto.frequencyOfIncident());
+                    return incidentFrequencyRepository.save(newFreq);
+                });
+
+           incident.setFrequency(frequency);
+
+        incidentDetailRepository.save(incident);
+
+        // 9. NARRATIVE
+        Narrative narrative = new Narrative();
+        narrative.setBlotterCase(newBlotter);
+        narrative.setStatement(dto.narrativeStatement());
+        narrativeRepository.save(narrative);
+
+
+        logDetailedActivity(managedOfficer, newBlotter, complainant, null, ipAddress);
+
+        return newBlotter.getBlotterNumber();
+    }
+
     private static People getRespondentPerson(FormalComplaintEntry dto) {
         People respondentPerson = new People();
         respondentPerson.setLastName(dto.respondentLastName());
