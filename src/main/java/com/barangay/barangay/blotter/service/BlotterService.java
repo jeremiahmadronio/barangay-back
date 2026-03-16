@@ -80,7 +80,7 @@ public class BlotterService {
 
         @Transactional
         public void updateStatus(UpdateStatusDTO dto, User actor, String ipAddress) {
-            BlotterCase blotter = blotterCaseRepository.findById(dto.caseId())
+            BlotterCase blotter = blotterCaseRepository.findByBlotterNumber(dto.blotterNumber())
                     .orElseThrow(() -> new RuntimeException("Case not found"));
 
             CaseStatus current = blotter.getStatus();

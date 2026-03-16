@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotNull;
 
 public record UpdateStatusDTO(
         @NotNull(message = "Case ID is required")
-        Long caseId,
+        String blotterNumber,
 
         @NotNull(message = "New status is required")
         CaseStatus newStatus,
