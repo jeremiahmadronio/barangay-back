@@ -1,4 +1,4 @@
-package com.barangay.barangay.blotter.dto;
+package com.barangay.barangay.blotter.dto.notes;
 
 import jakarta.validation.constraints.NotBlank;
 

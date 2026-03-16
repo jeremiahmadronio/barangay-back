@@ -1,9 +1,6 @@
-package com.barangay.barangay.blotter.dto;
+package com.barangay.barangay.blotter.dto.reports_and_display;
 
 import com.barangay.barangay.enumerated.CaseStatus;
-import com.barangay.barangay.enumerated.Status;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;

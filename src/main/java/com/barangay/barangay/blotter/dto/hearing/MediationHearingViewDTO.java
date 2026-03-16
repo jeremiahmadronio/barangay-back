@@ -1,4 +1,4 @@
-package com.barangay.barangay.blotter.dto;
+package com.barangay.barangay.blotter.dto.hearing;
 
 import java.time.LocalDate;
 import java.util.List;

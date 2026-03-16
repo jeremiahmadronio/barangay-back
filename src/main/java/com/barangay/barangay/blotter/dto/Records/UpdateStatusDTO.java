@@ -1,4 +1,4 @@
-package com.barangay.barangay.blotter.dto;
+package com.barangay.barangay.blotter.dto.Records;
 
 import com.barangay.barangay.enumerated.CaseStatus;
 import jakarta.validation.constraints.NotBlank;

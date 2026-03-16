@@ -1,6 +1,6 @@
 package com.barangay.barangay.blotter.controller;
 
-import com.barangay.barangay.blotter.dto.reports.*;
+import com.barangay.barangay.blotter.dto.reports_and_display.*;
 import com.barangay.barangay.blotter.service.BlotterReportsService;
 import com.barangay.barangay.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;

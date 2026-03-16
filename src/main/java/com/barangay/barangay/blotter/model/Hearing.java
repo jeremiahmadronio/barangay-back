@@ -11,6 +11,8 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(
@@ -49,6 +51,11 @@ public class Hearing {
     @Enumerated(EnumType.STRING)
     @Column
     private HearingStatus status = HearingStatus.SCHEDULED;
+
+
+    @OneToMany(mappedBy = "hearing", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("createdAt DESC")
+    private List<HearingFollowUp> followUps = new ArrayList<>();
 
 
 

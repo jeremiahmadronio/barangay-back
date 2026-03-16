@@ -1,8 +1,17 @@
 package com.barangay.barangay.blotter.controller;
 
 import com.barangay.barangay.audit.service.IpAddressUtils;
-import com.barangay.barangay.blotter.dto.*;
 import com.barangay.barangay.blotter.dto.Records.FtrSummaryStatsDTO;
+import com.barangay.barangay.blotter.dto.Records.UpdateStatusDTO;
+import com.barangay.barangay.blotter.dto.complaint.EvidenceOptionDTO;
+import com.barangay.barangay.blotter.dto.complaint.NatureOptionDTO;
+import com.barangay.barangay.blotter.dto.hearing.BusySlotDTO;
+import com.barangay.barangay.blotter.dto.hearing.CalendarMarkerDTO;
+import com.barangay.barangay.blotter.dto.hearing.HearingViewDTO;
+import com.barangay.barangay.blotter.dto.hearing.MediationHearingViewDTO;
+import com.barangay.barangay.blotter.dto.notes.AddCaseNoteRequest;
+import com.barangay.barangay.blotter.dto.notes.CaseNoteViewDTO;
+import com.barangay.barangay.blotter.dto.reports_and_display.*;
 import com.barangay.barangay.blotter.service.BlotterService;
 import com.barangay.barangay.blotter.service.BlotterServiceViewOnly;
 import com.barangay.barangay.security.CustomUserDetails;

@@ -1,4 +1,4 @@
-package com.barangay.barangay.blotter.dto;
+package com.barangay.barangay.blotter.dto.hearing;
 
 import com.barangay.barangay.enumerated.HearingOutcome;
 import jakarta.validation.constraints.NotNull;

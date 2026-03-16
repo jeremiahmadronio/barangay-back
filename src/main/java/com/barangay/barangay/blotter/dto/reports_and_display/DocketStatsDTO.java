@@ -1,4 +1,4 @@
-package com.barangay.barangay.blotter.dto;
+package com.barangay.barangay.blotter.dto.reports_and_display;
 
 public record DocketStatsDTO(
         long totalEntries,

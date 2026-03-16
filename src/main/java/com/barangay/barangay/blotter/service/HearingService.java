@@ -2,16 +2,11 @@ package com.barangay.barangay.blotter.service;
 
 import com.barangay.barangay.admin_management.model.User;
 import com.barangay.barangay.audit.service.AuditLogService;
-import com.barangay.barangay.blotter.dto.RecordMinutesRequest;
-import com.barangay.barangay.blotter.dto.ScheduleHearingRequest;
-import com.barangay.barangay.blotter.model.BlotterCase;
-import com.barangay.barangay.blotter.model.CaseTimeline;
-import com.barangay.barangay.blotter.model.Hearing;
-import com.barangay.barangay.blotter.model.HearingMinutes;
-import com.barangay.barangay.blotter.repository.BlotterCaseRepository;
-import com.barangay.barangay.blotter.repository.CasteTimeLineRepository;
-import com.barangay.barangay.blotter.repository.HearingMinutesRepository;
-import com.barangay.barangay.blotter.repository.HearingRepository;
+import com.barangay.barangay.blotter.dto.hearing.FollowUpHearingDTO;
+import com.barangay.barangay.blotter.dto.hearing.RecordMinutesRequest;
+import com.barangay.barangay.blotter.dto.hearing.ScheduleHearingRequest;
+import com.barangay.barangay.blotter.model.*;
+import com.barangay.barangay.blotter.repository.*;
 import com.barangay.barangay.enumerated.*;
 import com.barangay.barangay.user_management.repository.UserManagementRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -33,6 +28,7 @@ public class HearingService {
     private final HearingMinutesRepository hearingMinutesRepository;
     private final ObjectMapper objectMapper;
     private final CasteTimeLineRepository caseTimeLineRepository;
+    private final FollowUpHearingRepository followUpHearingRepository;
 
 
 
@@ -86,6 +82,69 @@ public class HearingService {
 
         logHearingActivity(managedOfficer, blotterCase, hearing, ipAddress);
     }
+
+
+
+
+
+
+    @Transactional
+    public void recordHearingFollowUp(Long hearingId, FollowUpHearingDTO dto, User officer, String ipAddress) {
+        User managedOfficer = userManagementRepository.findByIdWithDepartments(officer.getId())
+                .orElseThrow(() -> new RuntimeException("Officer session invalid."));
+        validateOfficerAccess(managedOfficer);
+
+        Hearing hearing = hearingRepository.findById(hearingId)
+                .orElseThrow(() -> new RuntimeException("Hearing not found."));
+
+        HearingFollowUp followUp = new HearingFollowUp();
+        followUp.setHearing(hearing);
+        followUp.setRemarks(dto.notes());
+        followUp.setRecordedBy(managedOfficer);
+        followUpHearingRepository.save(followUp);
+
+        CaseTimeline timeline = new CaseTimeline();
+        timeline.setBlotterCase(hearing.getBlotterCase());
+        timeline.setEventType(TimelineEventType.HEARING_FOLLOWUP);
+        timeline.setTitle("Follow-up added for Summon #" + hearing.getSummonNumber());
+        timeline.setDescription("Hearing follow up " + dto.notes());
+        timeline.setPerformedBy(managedOfficer);
+        caseTimeLineRepository.save(timeline);
+
+        logFollowUpActivity(managedOfficer, hearing.getBlotterCase(), hearing, dto, ipAddress);
+    }
+
+
+    private void logFollowUpActivity(User officer, BlotterCase bc, Hearing h, FollowUpHearingDTO dto, String ip) {
+        try {
+            Map<String, Object> snapshot = new LinkedHashMap<>();
+            snapshot.put("Case Number", bc.getBlotterNumber());
+            snapshot.put("Summon Number", "Summon #" + h.getSummonNumber());
+            snapshot.put("Remarks", dto.notes());
+            snapshot.put("Added By", officer.getFirstName() + " " + officer.getLastName());
+
+            String jsonState = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(snapshot);
+
+            auditLogService.log(
+                    officer,
+                    Departments.BLOTTER,
+                    "HEARING_FOLLOW_UP_ADDED",
+                    Severity.INFO,
+                    "ADD_FOLLOW_UP",
+                    ip,
+                    "Added follow-up notes for Summon #" + h.getSummonNumber() + " (Case: " + bc.getBlotterNumber() + ")",
+                    null,
+                    jsonState
+            );
+        } catch (Exception e) {
+            auditLogService.log(officer, null, "ERROR", Severity.CRITICAL, "LOG_FAIL", ip, "Follow-up audit log failed: " + e.getMessage(), null, null);
+        }
+    }
+
+
+
+
+
 
 
 

@@ -11,5 +11,6 @@ public enum TimelineEventType {
     STATUS_CHANGED,
     NOTE_ADDED,
     DOCUMENT_GENERATED,
-    ESCALATED
+    ESCALATED,
+    HEARING_FOLLOWUP
 }

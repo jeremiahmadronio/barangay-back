@@ -1,4 +1,4 @@
-package com.barangay.barangay.blotter.dto;
+package com.barangay.barangay.blotter.dto.complaint;
 
 public record EvidenceOptionDTO (
         Long id,

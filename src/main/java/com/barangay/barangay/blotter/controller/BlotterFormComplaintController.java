@@ -1,8 +1,8 @@
 package com.barangay.barangay.blotter.controller;
 
 import com.barangay.barangay.audit.service.IpAddressUtils;
-import com.barangay.barangay.blotter.dto.FormalComplaintEntry;
-import com.barangay.barangay.blotter.dto.RecordBlotterEntry;
+import com.barangay.barangay.blotter.dto.complaint.FormalComplaintEntry;
+import com.barangay.barangay.blotter.dto.complaint.RecordBlotterEntry;
 import com.barangay.barangay.blotter.service.BlotterFormComplaintService;
 import com.barangay.barangay.security.CustomUserDetails;
 import jakarta.servlet.http.HttpServletRequest;

@@ -1,4 +1,4 @@
-package com.barangay.barangay.blotter.dto;
+package com.barangay.barangay.blotter.dto.reports_and_display;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;

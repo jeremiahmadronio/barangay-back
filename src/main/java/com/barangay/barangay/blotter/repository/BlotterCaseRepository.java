@@ -1,7 +1,7 @@
 package com.barangay.barangay.blotter.repository;
 
-import com.barangay.barangay.blotter.dto.reports.NatureStatDTO;
-import com.barangay.barangay.blotter.dto.reports.StatusStatDTO;
+import com.barangay.barangay.blotter.dto.reports_and_display.NatureStatDTO;
+import com.barangay.barangay.blotter.dto.reports_and_display.StatusStatDTO;
 import com.barangay.barangay.blotter.model.BlotterCase;
 import com.barangay.barangay.department.model.Department;
 import com.barangay.barangay.enumerated.CaseStatus;
@@ -77,7 +77,7 @@ public interface BlotterCaseRepository extends JpaRepository<BlotterCase, Long>,
     List<LocalTime> findFtrIncidentTimesThisMonth(@Param("deptId") Long deptId, @Param("startDate") LocalDateTime startDate);
 
     @Query("""
-        SELECT new com.barangay.barangay.blotter.dto.reports.NatureStatDTO(
+        SELECT new com.barangay.barangay.blotter.dto.reports_and_display.NatureStatDTO(
             id.natureOfComplaint.name,
             COUNT(bc)
         )
@@ -89,7 +89,7 @@ public interface BlotterCaseRepository extends JpaRepository<BlotterCase, Long>,
     List<NatureStatDTO> countCasesByNature(@Param("deptId") Long deptId);
 
     @Query("""
-        SELECT new com.barangay.barangay.blotter.dto.reports.StatusStatDTO(
+        SELECT new com.barangay.barangay.blotter.dto.reports_and_display.StatusStatDTO(
             CAST(bc.status AS string),
             COUNT(bc)
         )

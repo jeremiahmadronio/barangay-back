@@ -2,8 +2,8 @@ package com.barangay.barangay.blotter.service;
 
 import com.barangay.barangay.admin_management.model.User;
 import com.barangay.barangay.audit.service.AuditLogService;
-import com.barangay.barangay.blotter.dto.FormalComplaintEntry;
-import com.barangay.barangay.blotter.dto.RecordBlotterEntry;
+import com.barangay.barangay.blotter.dto.complaint.FormalComplaintEntry;
+import com.barangay.barangay.blotter.dto.complaint.RecordBlotterEntry;
 import com.barangay.barangay.blotter.model.*;
 import com.barangay.barangay.blotter.model.EvidenceType;
 import com.barangay.barangay.blotter.repository.*;

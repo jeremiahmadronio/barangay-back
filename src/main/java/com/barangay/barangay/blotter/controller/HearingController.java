@@ -1,9 +1,9 @@
 package com.barangay.barangay.blotter.controller;
 
-import com.barangay.barangay.admin_management.model.User;
 import com.barangay.barangay.audit.service.IpAddressUtils;
-import com.barangay.barangay.blotter.dto.RecordMinutesRequest;
-import com.barangay.barangay.blotter.dto.ScheduleHearingRequest;
+import com.barangay.barangay.blotter.dto.hearing.FollowUpHearingDTO;
+import com.barangay.barangay.blotter.dto.hearing.RecordMinutesRequest;
+import com.barangay.barangay.blotter.dto.hearing.ScheduleHearingRequest;
 import com.barangay.barangay.blotter.service.HearingService;
 import com.barangay.barangay.security.CustomUserDetails;
 import jakarta.servlet.http.HttpServletRequest;
@@ -44,6 +44,22 @@ public class HearingController {
         String ipAddress = IpAddressUtils.getClientIp(request);
         hearingService.recordHearingMinutes(dto, officer.user(), ipAddress);
         return ResponseEntity.ok("Successfully recorded new hearing");
+    }
+
+
+    @PostMapping("/follow-up/{hearingId}")
+    public ResponseEntity<?> recordHearingFollowUp(
+            @PathVariable  Long hearingId,
+            @Valid @RequestBody FollowUpHearingDTO dto ,
+            @AuthenticationPrincipal CustomUserDetails user,
+            HttpServletRequest request
+            ){
+
+        String ipAddress = IpAddressUtils.getClientIp(request);
+
+        hearingService.recordHearingFollowUp(hearingId ,dto,user.user(),ipAddress);
+        return ResponseEntity.ok("Successfully follow up new hearing");
+
     }
 
 }
