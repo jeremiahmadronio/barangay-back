@@ -62,11 +62,11 @@ public class HearingController {
 
     }
 
-    @GetMapping("/hearing-details/{hearingId}")
-    public ResponseEntity<HearingFullDetailsDTO> hearingDetails (
-            @PathVariable Long hearingId
-    ){
-        return ResponseEntity.ok(hearingService.getHearingFullDetails(hearingId));
-    }
+        @GetMapping("/hearing-details/{hearingId}")
+        public ResponseEntity<HearingFullDetailsDTO> hearingDetails (
+                @PathVariable Long hearingId
+        ){
+            return ResponseEntity.ok(hearingService.getHearingFullDetails(hearingId));
+        }
 
 }
