@@ -103,7 +103,7 @@ public class BlotterService {
                 for (Hearing hearing : pendingHearings) {
                     hearing.setStatus(HearingStatus.CANCELLED);
 
-                    
+
                     hearing.setNotes("Auto-cancelled because case status was updated to " + next.name());
                 }
                 hearingRepository.saveAll(pendingHearings);

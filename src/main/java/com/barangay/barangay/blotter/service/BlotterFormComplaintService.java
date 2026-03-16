@@ -253,6 +253,9 @@ public class BlotterFormComplaintService {
         incident.setInjuriesDamagesDescription(dto.descriptionOfInjuries());
         incidentDetailRepository.save(incident);
 
+
+        System.out.println("========== DEBUGGING WITNESS ==========");
+        System.out.println("Laman ng DTO witnesses: " + dto.witnesses());
         if (dto.witnesses() != null && !dto.witnesses().isEmpty()) {
 
             for (WitnessDTO wDto : dto.witnesses()) {
