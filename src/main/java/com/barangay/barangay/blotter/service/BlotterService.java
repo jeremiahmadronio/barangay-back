@@ -79,35 +79,49 @@ public class BlotterService {
     }
 
 
-        @Transactional
-        public void updateStatus(UpdateStatusDTO dto, User actor, String ipAddress) {
-            BlotterCase blotter = blotterCaseRepository.findByBlotterNumber(dto.blotterNumber())
-                    .orElseThrow(() -> new RuntimeException("Case not found"));
+    @Transactional
+    public void updateStatus(UpdateStatusDTO dto, User actor, String ipAddress) {
+        BlotterCase blotter = blotterCaseRepository.findByBlotterNumber(dto.blotterNumber())
+                .orElseThrow(() -> new RuntimeException("Case not found"));
 
-            CaseStatus current = blotter.getStatus();
-            CaseStatus next = dto.newStatus();
+        CaseStatus current = blotter.getStatus();
+        CaseStatus next = dto.newStatus();
 
-            validateTransition(current, next);
+        validateTransition(current, next);
 
-            blotter.setStatus(next);
-            blotter.setStatusRemarks(dto.reason());
+        blotter.setStatus(next);
+        blotter.setStatusRemarks(dto.reason());
 
-            blotterCaseRepository.save(blotter);
+        blotterCaseRepository.save(blotter);
 
 
-            auditLogService.log(
-                    actor,
-                    Departments.BLOTTER,
-                    "BLOTTER_MANAGEMENT",
-                    Severity.INFO,
-                    "STATUS_CHANGE",
-                    ipAddress,
-                    dto.reason(),
-                    current.name(),
-                    next.name()
-            );
+        if (next == CaseStatus.SETTLED) {
 
+            List<Hearing> pendingHearings = hearingRepository.findByBlotterCaseAndStatus(blotter, HearingStatus.SCHEDULED);
+
+            if (!pendingHearings.isEmpty()) {
+                for (Hearing hearing : pendingHearings) {
+                    hearing.setStatus(HearingStatus.CANCELLED);
+
+                    
+                    hearing.setNotes("Auto-cancelled because case status was updated to " + next.name());
+                }
+                hearingRepository.saveAll(pendingHearings);
+            }
         }
+
+        auditLogService.log(
+                actor,
+                Departments.BLOTTER,
+                "BLOTTER_MANAGEMENT",
+                Severity.INFO,
+                "STATUS_CHANGE",
+                ipAddress,
+                dto.reason(),
+                current.name(),
+                next.name()
+        );
+    }
     private void validateTransition(CaseStatus current, CaseStatus next) {
         if (current == next) throw new RuntimeException("Status is already " + next);
 

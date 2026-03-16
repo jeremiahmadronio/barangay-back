@@ -1,6 +1,8 @@
 package com.barangay.barangay.blotter.repository;
 
+import com.barangay.barangay.blotter.model.BlotterCase;
 import com.barangay.barangay.blotter.model.Hearing;
+import com.barangay.barangay.enumerated.HearingStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -53,6 +55,8 @@ public interface HearingRepository extends JpaRepository<Hearing, Long> {
             "WHERE h.id = :id")
     Optional<Hearing> findHearingForView(@Param("id") Long id);
 
+
+    List<Hearing> findByBlotterCaseAndStatus(BlotterCase blotterCase, HearingStatus status);
 
 }
 
