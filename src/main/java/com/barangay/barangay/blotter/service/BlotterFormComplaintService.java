@@ -4,6 +4,7 @@ import com.barangay.barangay.admin_management.model.User;
 import com.barangay.barangay.audit.service.AuditLogService;
 import com.barangay.barangay.blotter.dto.complaint.FormalComplaintEntry;
 import com.barangay.barangay.blotter.dto.complaint.RecordBlotterEntry;
+import com.barangay.barangay.blotter.dto.complaint.WitnessDTO;
 import com.barangay.barangay.blotter.model.*;
 import com.barangay.barangay.blotter.model.EvidenceType;
 import com.barangay.barangay.blotter.repository.*;
@@ -37,6 +38,7 @@ public class BlotterFormComplaintService {
     private final ObjectMapper objectMapper;
     private final CasteTimeLineRepository  caseTimeLineRepository;
     private final IncidentFrequencyRepository incidentFrequencyRepository;
+    private final WitnessRepository witnessRepository;
 
     @Transactional
     public String saveForTheRecord(RecordBlotterEntry dto, User officer, String ipAddress) {
@@ -250,6 +252,20 @@ public class BlotterFormComplaintService {
         incident.setPlaceOfIncident(dto.placeOfIncident());
         incident.setInjuriesDamagesDescription(dto.descriptionOfInjuries());
         incidentDetailRepository.save(incident);
+
+        if (dto.witnesses() != null && !dto.witnesses().isEmpty()) {
+
+            for (WitnessDTO wDto : dto.witnesses()) {
+                Witness witness = new Witness();
+                witness.setBlotterCase(blotter);
+
+                witness.setFullName(wDto.fullName());
+                witness.setContactNumber(wDto.contactNumber());
+                witness.setAddress(wDto.address());
+
+                witnessRepository.save(witness);
+            }
+        }
 
         IncidentFrequency frequency = new IncidentFrequency();
         frequency.setLabel(dto.frequencyOfIncident());

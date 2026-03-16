@@ -1,5 +1,6 @@
 package com.barangay.barangay.blotter.dto.reports_and_display;
 
+import com.barangay.barangay.blotter.dto.complaint.WitnessDTO;
 import com.barangay.barangay.enumerated.CaseStatus;
 
 import java.time.LocalDate;

@@ -93,7 +93,7 @@ public class BlotterService {
             blotter.setStatusRemarks(dto.reason());
 
             blotterCaseRepository.save(blotter);
-            
+
 
             auditLogService.log(
                     actor,

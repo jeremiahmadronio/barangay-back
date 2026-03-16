@@ -1,4 +1,4 @@
-package com.barangay.barangay.blotter.dto.reports_and_display;
+package com.barangay.barangay.blotter.dto.complaint;
 public record WitnessDTO(
         String fullName,
         String contactNumber,

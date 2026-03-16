@@ -1,6 +1,5 @@
 package com.barangay.barangay.blotter.dto.complaint;
 
-import com.barangay.barangay.blotter.dto.reports_and_display.WitnessDTO;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
@@ -45,6 +44,8 @@ public record FormalComplaintEntry(
         String descriptionOfInjuries,
 
         @NotBlank String narrativeStatement,
+
+
 
         List<String> evidenceTypeIds,
 

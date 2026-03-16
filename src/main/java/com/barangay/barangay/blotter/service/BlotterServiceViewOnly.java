@@ -1,6 +1,7 @@
 package com.barangay.barangay.blotter.service;
 
 import com.barangay.barangay.admin_management.model.User;
+import com.barangay.barangay.blotter.dto.complaint.WitnessDTO;
 import com.barangay.barangay.blotter.dto.hearing.*;
 import com.barangay.barangay.blotter.dto.notes.CaseNoteViewDTO;
 import com.barangay.barangay.blotter.dto.reports_and_display.*;
