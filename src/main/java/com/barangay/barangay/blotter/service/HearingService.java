@@ -2,9 +2,7 @@ package com.barangay.barangay.blotter.service;
 
 import com.barangay.barangay.admin_management.model.User;
 import com.barangay.barangay.audit.service.AuditLogService;
-import com.barangay.barangay.blotter.dto.hearing.FollowUpHearingDTO;
-import com.barangay.barangay.blotter.dto.hearing.RecordMinutesRequest;
-import com.barangay.barangay.blotter.dto.hearing.ScheduleHearingRequest;
+import com.barangay.barangay.blotter.dto.hearing.*;
 import com.barangay.barangay.blotter.model.*;
 import com.barangay.barangay.blotter.repository.*;
 import com.barangay.barangay.enumerated.*;
@@ -15,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -146,6 +145,41 @@ public class HearingService {
 
 
 
+
+    @Transactional(readOnly = true)
+    public HearingFullDetailsDTO getHearingFullDetails(Long hearingId) {
+        Hearing hearing = hearingRepository.findById(hearingId)
+                .orElseThrow(() -> new RuntimeException("Hearing not found."));
+
+        HearingMinutes minutes = hearingMinutesRepository.findByHearingId(hearingId).orElse(null);
+
+        MinutesSummaryDTO minutesDto = (minutes == null) ? null : new MinutesSummaryDTO(
+                minutes.getComplainantPresent(),
+                minutes.getRespondentPresent(),
+                minutes.getHearingNotes(),
+                minutes.getOutcome(),
+                minutes.getRecordedBy().getFirstName() + " " + minutes.getRecordedBy().getLastName()
+        );
+
+        List<FollowUpSummaryDTO> followUps = hearing.getFollowUps().stream()
+                .map(f -> new FollowUpSummaryDTO(
+                        f.getId(),
+                        f.getRemarks(),
+                        f.getRecordedBy().getFirstName() + " " + f.getRecordedBy().getLastName(),
+                        f.getCreatedAt()
+                )).toList();
+
+        return new HearingFullDetailsDTO(
+                hearing.getId(),
+                hearing.getSummonNumber(),
+                hearing.getStatus(),
+                hearing.getScheduledStart(),
+                hearing.getVenue(),
+                hearing.getNotes(),
+                minutesDto,
+                followUps
+        );
+    }
 
 
 
