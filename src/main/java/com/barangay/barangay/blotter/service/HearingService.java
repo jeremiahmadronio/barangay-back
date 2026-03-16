@@ -74,7 +74,7 @@ public class HearingService {
         timeline.setBlotterCase(blotterCase);
         timeline.setEventType(TimelineEventType.SUMMON_ISSUED); //
         timeline.setTitle("Mediation " + hearing.getSummonNumber() + " Issued");
-        timeline.setDescription("Mediation scheduled on " +
+        timeline.setDescription("Mediation   scheduled on " +
                 hearing.getScheduledStart().toLocalDate() + " at " + hearing.getVenue());
         timeline.setPerformedBy(managedOfficer);
         caseTimeLineRepository.save(timeline);
