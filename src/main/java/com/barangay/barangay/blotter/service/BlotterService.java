@@ -93,11 +93,7 @@ public class BlotterService {
             blotter.setStatusRemarks(dto.reason());
 
             blotterCaseRepository.save(blotter);
-
-            Hearing hearing = new Hearing();
-            hearing.setStatus(HearingStatus.CANCELLED);
-            hearingRepository.save(hearing);
-
+            
 
             auditLogService.log(
                     actor,
