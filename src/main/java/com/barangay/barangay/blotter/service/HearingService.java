@@ -73,8 +73,8 @@ public class HearingService {
         CaseTimeline timeline = new CaseTimeline();
         timeline.setBlotterCase(blotterCase);
         timeline.setEventType(TimelineEventType.SUMMON_ISSUED); //
-        timeline.setTitle("Hearing " + hearing.getSummonNumber() + " Issued");
-        timeline.setDescription("Hearing scheduled on " +
+        timeline.setTitle("Mediation " + hearing.getSummonNumber() + " Issued");
+        timeline.setDescription("Mediation scheduled on " +
                 hearing.getScheduledStart().toLocalDate() + " at " + hearing.getVenue());
         timeline.setPerformedBy(managedOfficer);
         caseTimeLineRepository.save(timeline);
@@ -94,7 +94,7 @@ public class HearingService {
         validateOfficerAccess(managedOfficer);
 
         Hearing hearing = hearingRepository.findById(hearingId)
-                .orElseThrow(() -> new RuntimeException("Hearing not found."));
+                .orElseThrow(() -> new RuntimeException("Mediation not found."));
 
         HearingFollowUp followUp = new HearingFollowUp();
         followUp.setHearing(hearing);
@@ -105,8 +105,8 @@ public class HearingService {
         CaseTimeline timeline = new CaseTimeline();
         timeline.setBlotterCase(hearing.getBlotterCase());
         timeline.setEventType(TimelineEventType.HEARING_FOLLOWUP);
-        timeline.setTitle("Follow-up added for Summon #" + hearing.getSummonNumber());
-        timeline.setDescription("Hearing follow up " + dto.notes());
+        timeline.setTitle("Follow-up added for Mediation #" + hearing.getSummonNumber());
+        timeline.setDescription("Mediation follow up " + dto.notes());
         timeline.setPerformedBy(managedOfficer);
         caseTimeLineRepository.save(timeline);
 
@@ -118,7 +118,7 @@ public class HearingService {
         try {
             Map<String, Object> snapshot = new LinkedHashMap<>();
             snapshot.put("Case Number", bc.getBlotterNumber());
-            snapshot.put("Summon Number", "Summon #" + h.getSummonNumber());
+            snapshot.put("Mediation Number", "Mediation #" + h.getSummonNumber());
             snapshot.put("Remarks", dto.notes());
             snapshot.put("Added By", officer.getFirstName() + " " + officer.getLastName());
 
@@ -127,11 +127,11 @@ public class HearingService {
             auditLogService.log(
                     officer,
                     Departments.BLOTTER,
-                    "HEARING_FOLLOW_UP_ADDED",
+                    "MEDIATION_FOLLOW_UP_ADDED",
                     Severity.INFO,
                     "ADD_FOLLOW_UP",
                     ip,
-                    "Added follow-up notes for Summon #" + h.getSummonNumber() + " (Case: " + bc.getBlotterNumber() + ")",
+                    "Added follow-up notes for Mediation #" + h.getSummonNumber() + " (Case: " + bc.getBlotterNumber() + ")",
                     null,
                     jsonState
             );
@@ -200,13 +200,13 @@ public class HearingService {
         try {
             Map<String, Object> snapshot = new LinkedHashMap<>();
             snapshot.put("Case Number", bc.getBlotterNumber());
-            snapshot.put("Summon Number", "Summon #" + h.getSummonNumber());
+            snapshot.put("Mediation Number", "Mediation #" + h.getSummonNumber());
 
             String timeRange = String.format("%s - %s",
                     h.getScheduledStart().toLocalTime(),
                     h.getScheduledEnd().toLocalTime());
 
-            snapshot.put("Hearing Date", h.getScheduledStart().toLocalDate().toString());
+            snapshot.put("Mediation Date", h.getScheduledStart().toLocalDate().toString());
             snapshot.put("Time Slot", timeRange);
             snapshot.put("Venue", h.getVenue());
 
@@ -215,11 +215,11 @@ public class HearingService {
             auditLogService.log(
                     officer,
                     Departments.BLOTTER,
-                    "HEARING_SCHEDULED",
+                    "MEDIATION_SCHEDULED",
                     Severity.INFO,
-                    "SCHEDULE_HEARING",
+                    "SCHEDULE_MEDIATION",
                     ip,
-                    "Scheduled " + snapshot.get("Summon Number") + " for Case " + bc.getBlotterNumber(),
+                    "Scheduled " + snapshot.get("Mediation Number") + " for Case " + bc.getBlotterNumber(),
                     null,
                     jsonState
             );
@@ -270,7 +270,7 @@ public class HearingService {
         timeline.setBlotterCase(hearing.getBlotterCase());
         timeline.setEventType(TimelineEventType.HEARING_CONDUCTED);
 
-        timeline.setTitle("Hearing " + hearing.getSummonNumber() + " Result: " + dto.outcome());
+        timeline.setTitle("Mediation " + hearing.getSummonNumber() + " Result: " + dto.outcome());
 
         String attendance = String.format("Attendance: Complainant (%s), Respondent (%s). ",
                 dto.complainantPresent() ? "Present" : "Absent",
@@ -287,8 +287,8 @@ public class HearingService {
         try {
             Map<String, Object> snapshot = new LinkedHashMap<>();
             snapshot.put("Case Number", bc.getBlotterNumber());
-            snapshot.put("Summon Number", "Patawag #" + h.getSummonNumber());
-            snapshot.put("Hearing Date", h.getScheduledStart().toLocalDate().toString());
+            snapshot.put("Mediation Number", "Patawag #" + h.getSummonNumber());
+            snapshot.put("Mediation Date", h.getScheduledStart().toLocalDate().toString());
             snapshot.put("Outcome", outcome.toString().replace("_", " "));
             snapshot.put("Officer In-Charge", officer.getFirstName() + " " + officer.getLastName());
 
@@ -297,11 +297,11 @@ public class HearingService {
             auditLogService.log(
                     officer,
                     Departments.BLOTTER,
-                    "HEARING_MINUTES_RECORDED",
+                    "MEDIATION_MINUTES_RECORDED",
                     Severity.INFO,
                     "RECORD_MINUTES",
                     ip,
-                    "Recorded " + outcome + " for " + snapshot.get("Summon Number") + " (Case: " + bc.getBlotterNumber() + ")",
+                    "Recorded " + outcome + " for " + snapshot.get("mediation Number") + " (Case: " + bc.getBlotterNumber() + ")",
                     null,
                     jsonState
             );
