@@ -4,19 +4,23 @@ import com.barangay.barangay.admin_management.model.User;
 import com.barangay.barangay.department.model.Department;
 import com.barangay.barangay.enumerated.CaseStatus;
 import com.barangay.barangay.enumerated.CaseType;
+import com.barangay.barangay.resident.model.Complainant;
+import com.barangay.barangay.resident.model.Respondent;
+import com.barangay.barangay.resident.model.Witness;
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter @Setter
 @Table(name = "blotter_cases")
-@RequiredArgsConstructor
+@NoArgsConstructor
+@AllArgsConstructor
 public class BlotterCase {
 
     @Id
@@ -63,7 +67,16 @@ public class BlotterCase {
     private LocalDateTime referredToLuponAt;
 
     @Column
-    private Boolean luponExtended = false;
+    private LocalDateTime luponDeadline;
+
+    @Column
+    private LocalDateTime extensionDate;
+
+    @Column(columnDefinition = "TEXT")
+    private String extensionReason;
+
+    @Column
+    private Integer extensionCount = 0;
 
     @CreationTimestamp
     @Column(updatable = false, nullable = false)
@@ -78,9 +91,16 @@ public class BlotterCase {
     @OneToOne(mappedBy = "blotterCase", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Respondent respondent;
 
+    @OneToMany(mappedBy = "blotterCase", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Witness> witnesses = new ArrayList<>();
+
     @OneToOne(mappedBy = "blotterCase", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private IncidentDetail incidentDetail;
 
     @OneToOne(mappedBy = "blotterCase", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Narrative narrativeStatement;
+
+
+
+
 }

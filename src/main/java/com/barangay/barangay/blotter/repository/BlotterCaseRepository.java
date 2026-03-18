@@ -33,7 +33,6 @@ public interface BlotterCaseRepository extends JpaRepository<BlotterCase, Long>,
 
     long countByCaseTypeAndStatusAndDepartment(CaseType caseType, CaseStatus status, Department department);
 
-    List<BlotterCase> findAllByStatusAndDateFiledBefore(CaseStatus status, LocalDateTime threshold);
 
     long countByDepartmentAndCreatedAtBetween(Department dept, LocalDateTime start, LocalDateTime end);
 
@@ -46,21 +45,27 @@ public interface BlotterCaseRepository extends JpaRepository<BlotterCase, Long>,
     long countByDepartmentAndCaseTypeAndStatus(Department dept, CaseType type, CaseStatus status);
 
 
+    List<BlotterCase> findAllByStatusAndDepartmentIsNullAndDateFiledBefore(
+            CaseStatus status, LocalDateTime threshold);
+
+    List<BlotterCase> findAllByStatusAndDepartmentNameAndLuponDeadlineBefore(
+            CaseStatus status, String deptName, LocalDateTime now);
 
 
-    // Bilangin lahat ng nagpa-record (FTR)
+
+
     @Query("""
-        SELECT COUNT(bc) FROM BlotterCase bc 
-        WHERE bc.department.id = :deptId 
-          AND bc.caseType = 'FOR_THE_RECORD' 
+        SELECT COUNT(bc) FROM BlotterCase bc
+        WHERE bc.department.id = :deptId
+          AND bc.caseType = 'FOR_THE_RECORD'
           AND bc.createdAt >= :startDate AND bc.createdAt <= :endDate
     """)
     long countTotalFtr(@Param("deptId") Long deptId, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
     @Query("""
-        SELECT COUNT(bc) FROM BlotterCase bc 
-        WHERE bc.department.id = :deptId 
-          AND bc.caseType = 'FOR_THE_RECORD' 
+        SELECT COUNT(bc) FROM BlotterCase bc
+        WHERE bc.department.id = :deptId
+          AND bc.caseType = 'FOR_THE_RECORD'
           AND bc.status = 'ELEVATED_TO_FORMAL' 
           AND bc.createdAt >= :startDate AND bc.createdAt <= :endDate
     """)

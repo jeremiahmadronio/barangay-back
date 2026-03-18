@@ -1,5 +1,6 @@
-package com.barangay.barangay.blotter.model;
+package com.barangay.barangay.resident.model;
 
+import com.barangay.barangay.blotter.model.BlotterCase;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -10,26 +11,22 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "witnesses")
+@Table(name = "complainants")
 @Getter @Setter @AllArgsConstructor @NoArgsConstructor
-public class Witness {
+public class Complainant {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "person_id", nullable = false)
+    private People person;
+
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "case_id", nullable = false)
     private BlotterCase blotterCase;
-
-    @Column(length = 255, nullable = false)
-    private String fullName;
-
-    @Column(length = 15)
-    private String contactNumber;
-
-    @Column(columnDefinition = "TEXT")
-    private String address;
 
     @CreationTimestamp
     @Column(updatable = false, nullable = false)

@@ -13,6 +13,8 @@ import com.barangay.barangay.blotter.repository.*;
 import com.barangay.barangay.department.model.Department;
 import com.barangay.barangay.enumerated.CaseStatus;
 import com.barangay.barangay.enumerated.CaseType;
+import com.barangay.barangay.resident.model.People;
+import com.barangay.barangay.resident.repository.WitnessRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -43,7 +45,7 @@ public class BlotterServiceViewOnly {
 
     @Transactional(readOnly = true)
     public Page<BlotterSummaryDTO> getPagedBlotters(
-            User officer, // 🔴 Mandatory para sa department isolation
+            User officer,
             String search, String status, Long natureId,
             LocalDate start, LocalDate end, Pageable pageable) {
 
@@ -63,7 +65,6 @@ public class BlotterServiceViewOnly {
                 targetType
         );
 
-        // 4. SAFE MAPPING: Gamitin ang helper method para hindi mag-crash
         return blotterRepository.findAll(spec, pageable).map(this::mapToSummaryDTO);
     }
 
@@ -183,11 +184,20 @@ public class BlotterServiceViewOnly {
                 .toList();
 
         List<WitnessDTO> witnesses = witnessRepository.findAllByBlotterCase(bc).stream()
-                .map(w -> new WitnessDTO(
-                        (w.getFullName() != null && !w.getFullName().isBlank()) ? w.getFullName() : "Anonymous Witness",
-                        (w.getContactNumber() != null && !w.getContactNumber().isBlank()) ? w.getContactNumber() : "N/A",
-                        (w.getAddress() != null && !w.getAddress().isBlank()) ? w.getAddress() : "N/A"
-                )).toList();
+                .map(w -> {
+                    People p = w.getPerson();
+                    String fullName = (p != null) ? p.getFirstName() + " " + p.getLastName() : "Anonymous Witness";
+                    String contact = (p != null && p.getContactNumber() != null) ? p.getContactNumber() : "N/A";
+                    String address = (p != null && p.getCompleteAddress() != null) ? p.getCompleteAddress() : "N/A";
+
+                    return new WitnessDTO(
+                            p != null ? p.getId() : null,
+                            fullName,
+                            contact,
+                            address,
+                            w.getTestimony()
+                    );
+                }).toList();
 
 
         return new BlotterDocketViewDTO(

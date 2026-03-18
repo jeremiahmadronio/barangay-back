@@ -1,0 +1,62 @@
+package com.barangay.barangay.resident.controller;
+
+import com.barangay.barangay.audit.service.IpAddressUtils;
+import com.barangay.barangay.resident.dto.PersonSearchResponseDTO;
+import com.barangay.barangay.resident.dto.ResidentProfileViewDTO;
+import com.barangay.barangay.resident.dto.ResidentRegistrationRequestDTO;
+import com.barangay.barangay.resident.dto.ResidentSummary;
+import com.barangay.barangay.resident.model.Resident;
+import com.barangay.barangay.resident.service.ResidentService;
+import com.barangay.barangay.security.CustomUserDetails;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@Controller
+@RequiredArgsConstructor
+@RequestMapping("/api/v1/resident")
+public class ResidentController {
+
+    private final ResidentService residentService;
+
+
+
+    @PostMapping("/register")
+    public ResponseEntity<?> registerResident(
+            @Valid @RequestBody ResidentRegistrationRequestDTO dto,
+            @AuthenticationPrincipal CustomUserDetails actor,
+            HttpServletRequest request
+            ) {
+
+        String ipAddress = IpAddressUtils.getClientIp(request);
+        residentService.registerNewResident(dto,actor.user(),ipAddress);
+        return ResponseEntity.ok("Successfully registered resident");
+
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<PersonSearchResponseDTO>> search(@RequestParam String query) {
+        List<PersonSearchResponseDTO> results = residentService.searchPeople(query);
+        return ResponseEntity.ok(results);
+    }
+
+
+    @GetMapping("/resident-profile/{residentId}")
+    public ResponseEntity<ResidentProfileViewDTO> displayResidentProfile (@Valid @PathVariable  Long residentId
+    )
+    {
+        return ResponseEntity.ok(residentService.getFullResidentProfile(residentId));
+    }
+
+    @GetMapping("/table")
+    public ResponseEntity<List<ResidentSummary>> getResidentTable() {
+        return ResponseEntity.ok(residentService.getResidentTable());
+    }
+}

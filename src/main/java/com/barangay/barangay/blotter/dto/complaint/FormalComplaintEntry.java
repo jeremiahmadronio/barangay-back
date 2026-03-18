@@ -8,20 +8,23 @@ import java.time.LocalTime;
 import java.util.List;
 
 public record FormalComplaintEntry(
+
+        Long complainantId,
+        Long respondentId,
         // Section 2: Complainant
-        @NotBlank String complainantLastName,
-        @NotBlank String complainantFirstName,
+        String complainantLastName,
+         String complainantFirstName,
         String complainantMiddleName,
-        @NotBlank String complainantContact,
+         String complainantContact,
         Integer complainantAge,
         String complainantGender,
         String complainantCivilStatus,
         String complainantEmail,
-        @NotBlank String complainantAddress,
+         String complainantAddress,
 
         // Section 3: Respondent
-        @NotBlank String respondentLastName,
-        @NotBlank String respondentFirstName,
+       String respondentLastName,
+         String respondentFirstName,
         String respondentMiddleName,
         String respondentAlias,
         Short respondentAge,
@@ -31,7 +34,7 @@ public record FormalComplaintEntry(
         String respondentOccupation,
         String respondentContact,
         String respondentAddress,
-        @NotBlank String relationshipTypeName,
+         String relationshipTypeName,
         boolean livingWithComplainant,
 
         // Section 4: Incident Details

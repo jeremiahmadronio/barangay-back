@@ -1,4 +1,4 @@
-package com.barangay.barangay.blotter.model;
+package com.barangay.barangay.resident.model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -8,7 +8,10 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Period;
+import java.util.List;
 
 @Entity
 @Table(name = "people")
@@ -19,7 +22,11 @@ public class People {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @OneToOne(mappedBy = "person", cascade = CascadeType.ALL)
+    private Resident resident;
 
+    @Lob
+    private byte[] photo;
 
     @Column(length = 100, nullable = false)
     private String lastName;
@@ -36,8 +43,13 @@ public class People {
     @Column(columnDefinition = "TEXT")
     private String completeAddress;
 
+    @Column(nullable = false)
+    private Boolean isResident = false;
+
     @Column
     private Short age;
+
+    private LocalDate birthDate;
 
     @Column(length = 20)
     private String gender;
@@ -47,6 +59,16 @@ public class People {
 
     @Column(length = 255)
     private String email;
+
+
+    @OneToMany(mappedBy = "person", fetch = FetchType.LAZY)
+    private List<Complainant> asComplainant;
+
+    @OneToMany(mappedBy = "person", fetch = FetchType.LAZY)
+    private List<Respondent> asRespondent;
+
+    @OneToMany(mappedBy = "person", fetch = FetchType.LAZY)
+    private List<Witness> asWitness;
 
     @CreationTimestamp
     @Column(updatable = false, nullable = false)

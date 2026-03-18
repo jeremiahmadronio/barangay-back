@@ -20,24 +20,30 @@ public class CaseBackgroundService15DaysChecker {
     private final BlotterCaseRepository blotterRepository;
     private final CaseNoteRepository caseNoteRepository;
 
-    //  12:00 AM
+    private static final String LUPON_DEPT_NAME = "LUPONG_TAGAPAMAYAPA";
+
     @Scheduled(cron = "0 0 0 * * *")
     @Transactional
-    public void runMediationCheck() {
-        LocalDateTime threshold = LocalDateTime.now().minusDays(15);
+    public void runDailyMaintenance() {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime neglectThreshold = now.minusDays(15);
+        List<BlotterCase> neglectedBlotters = blotterRepository
+                .findAllByStatusAndDepartmentIsNullAndDateFiledBefore(
+                        CaseStatus.PENDING, neglectThreshold);
 
-        List<BlotterCase> neglectedCases = blotterRepository
-                .findAllByStatusAndDateFiledBefore(CaseStatus.PENDING, threshold);
-
-        for (BlotterCase bc : neglectedCases) {
-            updateCase(bc, CaseStatus.EXPIRED_UNACTIONED, "SYSTEM: Case expired in PENDING status for 15 days.");
+        for (BlotterCase bc : neglectedBlotters) {
+            updateCase(bc, CaseStatus.EXPIRED_UNACTIONED,
+                    "SYSTEM: Entry expired. No department assigned within the 15-day window.");
         }
 
-        List<BlotterCase> expiredMediation = blotterRepository
-                .findAllByStatusAndDateFiledBefore(CaseStatus.UNDER_MEDIATION, threshold);
 
-        for (BlotterCase bc : expiredMediation) {
-            updateCase(bc, CaseStatus.REFERRED_TO_LUPON, "SYSTEM: 15-day mediation period ended. Automatically referred to Lupon.");
+        List<BlotterCase> expiredLuponCases = blotterRepository
+                .findAllByStatusAndDepartmentNameAndLuponDeadlineBefore(
+                        CaseStatus.UNDER_CONCILIATION, LUPON_DEPT_NAME, now);
+
+        for (BlotterCase bc : expiredLuponCases) {
+            updateCase(bc, CaseStatus.CLOSED,
+                    "SYSTEM: Mediation period ended. Deadline reached without settlement.");
         }
     }
 
