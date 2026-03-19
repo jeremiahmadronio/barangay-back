@@ -179,8 +179,10 @@ public class ResidentService {
 
 
     @Transactional(readOnly = true)
-    public List<ResidentSummary> getResidentTable() {
-        return residentRepository.getMinimalResidentList();
+    public List<ResidentSummary> getResidentTable(String search, String gender, Boolean isVoter, String household) {
+        String genderFilter = (gender == null || gender.equalsIgnoreCase("All") || gender.isEmpty()) ? null : gender;
+
+        return residentRepository.findWithFilters(search, genderFilter, isVoter, household);
     }
 
 

@@ -6,18 +6,22 @@ import java.time.LocalTime;
 import java.util.List;
 
 public record RecordBlotterEntry(
-        @NotBlank String firstName,
-        @NotBlank String lastName,
+
+        Long complainantId,
+        Long respondentId,
+
+         String firstName,
+         String lastName,
         String middleName,
-        @NotBlank String contactNumber,
+         String contactNumber,
         @Min(0) Integer age,
         String gender,
         String civilStatus,
         String email,
-        @NotBlank String completeAddress,
+         String completeAddress,
 
-        @NotBlank String respondentFirstName,
-        @NotBlank String respondentLastName,
+         String respondentFirstName,
+         String respondentLastName,
         String respondentMiddleName,
         String respondentContact,
         String relationshipToComplainant,

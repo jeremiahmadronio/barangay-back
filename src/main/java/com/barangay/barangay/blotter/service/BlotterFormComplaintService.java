@@ -52,113 +52,86 @@ public class BlotterFormComplaintService {
     public String saveForTheRecord(RecordBlotterEntry dto, User officer, String ipAddress) {
 
         User managedOfficer = UserManagementRepository.findByIdWithDepartments(officer.getId())
-                .orElseThrow(() -> new RuntimeException("Officer not found in database."));
+                .orElseThrow(() -> new RuntimeException("Officer not found."));
+        validateOfficerAccess(managedOfficer);
 
         Department userDept = managedOfficer.getAllowedDepartments().stream()
                 .findFirst()
-                .orElseThrow(() -> new RuntimeException("Officer has no assigned department."));
-
-        validateOfficerAccess(managedOfficer);
-
-        People complainantPerson = getPeople(dto);
-
-        peopleRepository.save(complainantPerson);
-
-        People respondentPerson = new People();
-        respondentPerson.setFirstName(dto.respondentFirstName());
-        respondentPerson.setLastName(dto.respondentLastName());
-        respondentPerson.setMiddleName(dto.respondentMiddleName());
-        respondentPerson.setContactNumber(dto.respondentContact());
-        respondentPerson.setCompleteAddress(dto.respondentAddress());
-        peopleRepository.save(respondentPerson);
+                .orElseThrow(() -> new RuntimeException("No assigned department."));
 
 
+        People complainantPerson = getOrSavePeople(
+                dto.complainantId(),
+                dto.firstName(), dto.lastName(), dto.middleName(),
+                dto.contactNumber(), dto.completeAddress(), dto.gender(), null
+        );
 
 
+        People respondentPerson = getOrSavePeople(
+                dto.respondentId(),
+                dto.respondentFirstName(), dto.respondentLastName(), dto.respondentMiddleName(),
+                dto.respondentContact(), dto.respondentAddress(), null, null
+        );
 
-
-        // 3. CREATE BLOTTER CASE HEADER
+        // 4. CREATE BLOTTER CASE HEADER
         BlotterCase blotter = new BlotterCase();
         blotter.setBlotterNumber(generateBlotterNumber());
         blotter.setCaseType(CaseType.FOR_THE_RECORD);
         blotter.setStatus(CaseStatus.RECORDED);
         blotter.setDateFiled(LocalDateTime.now());
         blotter.setDepartment(userDept);
-
-        blotter.setCreatedBy(officer);
-        blotter.setCertifiedAt(LocalDateTime.now());
         blotter.setReceivingOfficer(managedOfficer);
         blotter.setCreatedBy(managedOfficer);
-        managedOfficer.getAllowedDepartments().stream()
-                .filter(d -> d.getName().equalsIgnoreCase("BLOTTER"))
-                .findFirst()
-                .ifPresent(blotter::setDepartment);
-
-        blotter.setReceivingOfficer(managedOfficer);
+        blotter.setCertifiedAt(LocalDateTime.now());
         blotterRepository.save(blotter);
 
-        for (String inputName : dto.evidenceTypeIds()) {
-            EvidenceType eType = evidenceTypeRepository.findByTypeName(inputName)
-                    .orElseGet(() -> {
-                        EvidenceType newType = new EvidenceType();
-                        newType.setTypeName(inputName);
-                        return evidenceTypeRepository.save(newType);
-                    });
-
-            EvidenceRecord er = new EvidenceRecord();
-            er.setBlotterCase(blotter);
-            er.setType(eType);
-            er.setReceivedBy(managedOfficer);
-            evidenceRecordRepository.save(er);
-        }
-
-        // 4. LINK PERSON TO COMPLAINANT TABLE
+        // 5. LINK ROLES (Complainant & Respondent)
         Complainant complainant = new Complainant();
         complainant.setBlotterCase(blotter);
         complainant.setPerson(complainantPerson);
-
         complainantRepository.save(complainant);
-
-
 
         Respondent rLink = new Respondent();
         rLink.setBlotterCase(blotter);
         rLink.setPerson(respondentPerson);
-        RelationshipType relType = relationshipTypeRepository.findByNameIgnoreCase(dto.relationshipToComplainant())
-                .orElseGet(() -> {
-                    RelationshipType newType = new RelationshipType();
-                    newType.setName(dto.relationshipToComplainant().trim());
-                    return relationshipTypeRepository.save(newType);
-                });
-        rLink.setRelationshipType(relType);
+
+        if (dto.relationshipToComplainant() != null) {
+            RelationshipType relType = relationshipTypeRepository.findByNameIgnoreCase(dto.relationshipToComplainant().trim())
+                    .orElseGet(() -> {
+                        RelationshipType newType = new RelationshipType();
+                        newType.setName(dto.relationshipToComplainant().trim());
+                        return relationshipTypeRepository.save(newType);
+                    });
+            rLink.setRelationshipType(relType);
+        }
         respondentRepository.save(rLink);
 
-
-
-
-        //  SAVE INCIDENT DETAILS & NARRATIVE
+        saveEvidenceRecords(dto.evidenceTypeIds(), blotter, managedOfficer);
         saveIncidentAndNarrative(dto, blotter);
 
-        //  STRUCTURED AUDIT LOG (JSON Snapshot)
-        logDetailedActivity(officer, blotter, complainantPerson, dto, ipAddress);
+        logDetailedActivity(managedOfficer, blotter, complainantPerson, null, ipAddress);
 
         return blotter.getBlotterNumber();
     }
 
-    private static People getPeople(RecordBlotterEntry dto) {
-        People complainantPerson = new People();
-        complainantPerson.setFirstName(dto.firstName());
-        complainantPerson.setLastName(dto.lastName());
-        complainantPerson.setMiddleName(dto.middleName());
-        complainantPerson.setContactNumber(dto.contactNumber());
-        complainantPerson.setCompleteAddress(dto.completeAddress());
-        complainantPerson.setAge(dto.age() != null ? dto.age().shortValue() : null);
-        complainantPerson.setGender(dto.gender());
-        complainantPerson.setCivilStatus(dto.civilStatus());
-        complainantPerson.setEmail(dto.email());
-        return complainantPerson;
-    }
+    private void saveEvidenceRecords(List<String> evidenceTypeIds, BlotterCase blotter, User officer) {
+        if (evidenceTypeIds != null) {
+            for (String input : evidenceTypeIds) {
+                EvidenceType eType = evidenceTypeRepository.findByTypeName(input)
+                        .orElseGet(() -> {
+                            EvidenceType newType = new EvidenceType();
+                            newType.setTypeName(input);
+                            return evidenceTypeRepository.save(newType);
+                        });
 
+                EvidenceRecord er = new EvidenceRecord();
+                er.setBlotterCase(blotter);
+                er.setType(eType);
+                er.setReceivedBy(officer);
+                evidenceRecordRepository.save(er);
+            }
+        }
+    }
 
 
     @Transactional

@@ -56,7 +56,11 @@ public class ResidentController {
     }
 
     @GetMapping("/table")
-    public ResponseEntity<List<ResidentSummary>> getResidentTable() {
-        return ResponseEntity.ok(residentService.getResidentTable());
+    public ResponseEntity<List<ResidentSummary>> getResidentTable(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String gender,
+            @RequestParam(required = false) Boolean isVoter,
+            @RequestParam(required = false) String household) {
+        return ResponseEntity.ok(residentService.getResidentTable(search, gender, isVoter, household));
     }
 }
