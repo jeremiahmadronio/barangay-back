@@ -41,6 +41,7 @@ public class BlotterServiceViewOnly {
     private final HearingRepository  hearingRepository;
     private final HearingMinutesRepository hearingMinutesRepository;
     private final CaseNoteRepository caseNoteRepository;
+    private final IncidentFrequencyRepository incidentFrequencyRepository;
 
 
     @Transactional(readOnly = true)
@@ -247,7 +248,9 @@ public class BlotterServiceViewOnly {
                 (bc.getNarrativeStatement() != null) ? bc.getNarrativeStatement().getStatement() : "No narrative statement provided.",
 
                 evidence,
-                witnesses
+                witnesses,
+                bc.getSettlementTerms(),
+                bc.getSettledAt()
         );
     }
 
@@ -437,5 +440,11 @@ public class BlotterServiceViewOnly {
                 blotterRepository.countByCaseTypeAndStatusInAndDepartment(formal, resolvedStatuses, userDept),
                 blotterRepository.countByCaseTypeAndStatusAndDepartment(formal, CaseStatus.UNDER_MEDIATION, userDept)
         );
+    }
+
+
+
+    public List<IncidentFrequencyDTO> getFrequencyOptions() {
+        return incidentFrequencyRepository.getDropdownOptions();
     }
 }

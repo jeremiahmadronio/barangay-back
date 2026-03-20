@@ -8,5 +8,6 @@ public record RecordMinutesRequest(
         @NotNull Boolean complainantPresent,
         @NotNull Boolean respondentPresent,
         String hearingNotes,
-        @NotNull HearingOutcome outcome
+        @NotNull HearingOutcome outcome,
+        String settlementTerms
 ) {}

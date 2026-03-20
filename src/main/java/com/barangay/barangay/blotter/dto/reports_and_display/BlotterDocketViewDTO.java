@@ -53,7 +53,13 @@ public record BlotterDocketViewDTO (
 
         String narrative,
         List<String> evidenceTypeIds,
-        List<WitnessDTO> witnesses
+        List<WitnessDTO> witnesses,
+
+
+        String agreementsTerm,
+        LocalDateTime agreementDate
+
+
 ){
 
 

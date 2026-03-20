@@ -38,4 +38,5 @@ public record BlotterRecordViewDTO(
 
         // Evidence
         List<String> evidenceNames
+
 ) {}

@@ -72,13 +72,15 @@ public class DataInitializer implements CommandLineRunner {
         createDeptIfNotFound("CONTENT");
 
         // ── Permissions ──────────────────────────────────────────────────────
-        Permission allAccess = createPermIfNotFound("All Access");
-        createPermIfNotFound("View Records");
-        createPermIfNotFound("Edit Records");
-        createPermIfNotFound("Create Records");
-        createPermIfNotFound("Delete Records (Restricted)");
-        createPermIfNotFound("Generate Reports");
-        createPermIfNotFound("Issue Certificated");
+
+        // BLOTTER MODULE PERMISSIONS
+      createPermIfNotFound("View Blotter Records");
+         createPermIfNotFound("Create Blotter Entry");
+         createPermIfNotFound("Delete Blotter Records");
+         createPermIfNotFound("Manage Hearings & Mediation");
+         createPermIfNotFound("Update Case Status");
+        createPermIfNotFound("Issue CFA & Certifications");
+       createPermIfNotFound("Generate Blotter Reports");
 
 
 

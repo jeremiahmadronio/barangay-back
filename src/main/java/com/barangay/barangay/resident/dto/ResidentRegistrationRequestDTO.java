@@ -42,7 +42,7 @@ public record ResidentRegistrationRequestDTO(
         String religion,
         String bloodType,
 
-        @NotBlank(message = "Barangay ID Number is required")
+            @NotBlank(message = "Barangay ID Number is required")
         String barangayIdNumber,
 
         LocalDate dateOfResidency

@@ -94,16 +94,31 @@ public class BlotterService {
 
         blotterCaseRepository.save(blotter);
 
+        TimelineEventType resolvedEventType = switch (next) {
+            case SETTLED -> TimelineEventType.CASE_SETTLED;
+            case DISMISSED -> TimelineEventType.CASE_DISMISSED;
+            case REFERRED_TO_LUPON -> TimelineEventType.CASE_REFERRED;
+            default -> TimelineEventType.STATUS_CHANGED;
+        };
 
-        if (next == CaseStatus.SETTLED) {
+        CaseTimeline timeline = new CaseTimeline();
+        timeline.setBlotterCase(blotter);
+        timeline.setEventType(resolvedEventType);
+        timeline.setTitle("Case Status Updated to " + next.name());
+        timeline.setDescription("Status changed from " + current.name() + " to " + next.name() + ". Remarks: " + dto.reason());
+        timeline.setPerformedBy(actor);
 
+        caseTimeLineRepository.save(timeline);
+        // --------------------------------
+
+        // Cancel pending hearings if the case is closed/settled/dismissed
+        // Pinalawak ko 'yung logic mo dito. Kasi kung dismissed na yung kaso, bakit pa magkaka-hearing?
+        if (next == CaseStatus.SETTLED || next == CaseStatus.DISMISSED) {
             List<Hearing> pendingHearings = hearingRepository.findByBlotterCaseAndStatus(blotter, HearingStatus.SCHEDULED);
 
             if (!pendingHearings.isEmpty()) {
                 for (Hearing hearing : pendingHearings) {
                     hearing.setStatus(HearingStatus.CANCELLED);
-
-
                     hearing.setNotes("Auto-cancelled because case status was updated to " + next.name());
                 }
                 hearingRepository.saveAll(pendingHearings);

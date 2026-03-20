@@ -203,4 +203,9 @@ public class BlotterController {
     }
 
 
+    @GetMapping("/frequencies")
+    public ResponseEntity<List<IncidentFrequencyDTO>> getFrequencies() {
+        return ResponseEntity.ok(blotterServiceViewOnly.getFrequencyOptions());
+    }
+
 }

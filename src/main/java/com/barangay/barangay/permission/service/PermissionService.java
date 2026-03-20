@@ -1,6 +1,8 @@
 package com.barangay.barangay.permission.service;
 
 import com.barangay.barangay.admin_management.model.User;
+import com.barangay.barangay.department.model.Department;
+import com.barangay.barangay.department.repository.DepartmentRepository;
 import com.barangay.barangay.permission.dto.PermissionOptions;
 import com.barangay.barangay.permission.dto.UserAccessPermission;
 import com.barangay.barangay.permission.model.Permission;
@@ -12,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -22,8 +25,33 @@ public class PermissionService {
     private final PermissionRepository permissionRepository;
     private final UserAccessPermissionRepository userAccessPermissionRepository;
 
+     private final DepartmentRepository departmentRepository;
+
     @Transactional(readOnly = true)
-    public List<PermissionOptions> getAllPermissionOptions() {
+    public List<PermissionOptions> getPermissionOptions(Long departmentId) {
+
+        if (departmentId != null) {
+
+            Optional<Department> departmentOpt = departmentRepository.findById(departmentId);
+
+            if (departmentOpt.isPresent() && "BLOTTER".equalsIgnoreCase(departmentOpt.get().getName())) {
+
+                List<String> blotterPermissions = List.of(
+                        "View Blotter Records",
+                        "Create Blotter Entry",
+                        "Manage Hearings & Mediation",
+                        "Update Case Status"
+                );
+
+                return permissionRepository.findByPermissionNameIn(blotterPermissions).stream()
+                        .map(permission -> new PermissionOptions(
+                                permission.getId(),
+                                permission.getPermissionName()
+                        ))
+                        .collect(Collectors.toList());
+            }
+        }
+
         return permissionRepository.findAll().stream()
                 .map(permission -> new PermissionOptions(
                         permission.getId(),
@@ -31,7 +59,6 @@ public class PermissionService {
                 ))
                 .collect(Collectors.toList());
     }
-
 
 
     @Transactional(readOnly = true)

@@ -45,11 +45,22 @@ public class BlotterCase {
     @Column(columnDefinition = "TEXT")
     private String statusRemarks;
 
+
+
+
+
     @Column
     private Boolean isCertified = false;
 
     @Column
     private LocalDateTime certifiedAt;
+
+
+    @Column(columnDefinition = "TEXT")
+    private String settlementTerms;
+
+    @Column
+    private LocalDateTime settledAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "dept_id")

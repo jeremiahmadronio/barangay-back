@@ -43,7 +43,7 @@ public record FormalComplaintEntry(
         @NotNull LocalDate dateOfIncident,
         LocalTime timeOfIncident,
         @NotBlank String placeOfIncident,
-        String frequencyOfIncident,
+        Long frequencyOfIncident,
         String descriptionOfInjuries,
 
         @NotBlank String narrativeStatement,

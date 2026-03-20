@@ -16,9 +16,11 @@ public interface PeopleRepository extends JpaRepository<People, Long> {
             "p.id, p.firstName, p.lastName, p.middleName, p.contactNumber, p.age, " +
             "p.birthDate, p.gender, p.civilStatus, p.email, p.completeAddress, " +
             "p.isResident, r.barangayIdNumber) " +
-            "FROM People p LEFT JOIN p.resident r " +
-            "WHERE LOWER(p.firstName) LIKE LOWER(concat('%', :query, '%')) " +
+            "FROM People p JOIN p.resident r " +
+            "WHERE p.isResident = true AND (" +
+            "LOWER(p.firstName) LIKE LOWER(concat('%', :query, '%')) " +
             "OR LOWER(p.lastName) LIKE LOWER(concat('%', :query, '%')) " +
-            "OR LOWER(r.barangayIdNumber) LIKE LOWER(concat('%', :query, '%'))")
+            "OR LOWER(r.barangayIdNumber) LIKE LOWER(concat('%', :query, '%'))" +
+            ")")
     List<PersonSearchResponseDTO> searchPeopleForBlotter(@Param("query") String query);
 }

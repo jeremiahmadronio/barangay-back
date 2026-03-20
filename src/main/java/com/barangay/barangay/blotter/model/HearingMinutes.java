@@ -43,7 +43,7 @@ public class HearingMinutes {
     private User recordedBy;
 
     @CreationTimestamp
-    @Column(updatable = false, nullable = false)
+    @Column(updatable = false   , nullable = false)
     private LocalDateTime createdAt;
 
     @UpdateTimestamp

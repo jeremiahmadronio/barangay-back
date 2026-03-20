@@ -248,21 +248,24 @@ public class BlotterFormComplaintService {
             }
         }
 
-        IncidentFrequency frequency = new IncidentFrequency();
-        frequency.setLabel(dto.frequencyOfIncident());
-        incidentFrequencyRepository.save(frequency);
+        if (dto.frequencyOfIncident() != null) {
+            IncidentFrequency frequency = incidentFrequencyRepository.findById(dto.frequencyOfIncident())
+                    .orElseThrow(() -> new RuntimeException("Invalid Frequency ID selected."));
+            incident.setFrequency(frequency);
+        };
+
+        incidentDetailRepository.save(incident);
 
         return blotter.getBlotterNumber();
     }
 
 
     private People getOrSavePeople(Long id, String first, String last, String middle, String contact, String address, String gender, LocalDate dob) {
-        if (id != null) {
+        if (id != null && id != 0L) {
             return peopleRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Person with ID " + id + " not found."));
         }
 
-        // Brutal Check: Kung walang ID, dapat may pangalan man lang
         if (first == null || first.isBlank()) {
             throw new RuntimeException("First name is required for manual entry.");
         }
@@ -395,15 +398,11 @@ public class BlotterFormComplaintService {
         incident.setInjuriesDamagesDescription(dto.descriptionOfInjuries());
 
 
-        IncidentFrequency frequency = incidentFrequencyRepository.findByLabelIgnoreCase(dto.frequencyOfIncident())
-                .orElseGet(() -> {
-                    IncidentFrequency newFreq = new IncidentFrequency();
-                    newFreq.setLabel(dto.frequencyOfIncident());
-                    return incidentFrequencyRepository.save(newFreq);
-                });
-
-           incident.setFrequency(frequency);
-
+        if (dto.frequencyOfIncident() != null) {
+            IncidentFrequency frequency = incidentFrequencyRepository.findById(dto.frequencyOfIncident())
+                    .orElseThrow(() -> new RuntimeException("Invalid Frequency ID selected."));
+            incident.setFrequency(frequency);
+        }
         incidentDetailRepository.save(incident);
 
         // 9. NARRATIVE
@@ -456,7 +455,7 @@ public class BlotterFormComplaintService {
 
         // Standard Permission Check
         boolean hasCreatePerm = officer.getCustomPermissions().stream()
-                .anyMatch(p -> p.getPermissionName().equalsIgnoreCase("Create Records"));
+                .anyMatch(p -> p.getPermissionName().equalsIgnoreCase("Create Blotter Entry"));
 
         if (!isBlotterDept || !hasCreatePerm) {
             throw new RuntimeException("Unauthorized: Access denied. User must be in the Blotter Department with 'Create Records' permission.");

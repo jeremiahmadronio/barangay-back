@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -189,7 +190,7 @@ public class HearingService {
                 .anyMatch(d -> d.getName().equalsIgnoreCase("BLOTTER") || d.getId() == 3L);
 
         boolean hasCreatePerm = officer.getCustomPermissions().stream()
-                .anyMatch(p -> p.getPermissionName().equalsIgnoreCase("Create Records"));
+                .anyMatch(p -> p.getPermissionName().equalsIgnoreCase("Manage Hearings & Mediation"));
 
         if (!isBlotterDept || !hasCreatePerm) {
             throw new RuntimeException("Access Denied: You don't have permission to schedule hearings.");
@@ -244,6 +245,7 @@ public class HearingService {
             throw new RuntimeException("Minutes have already been recorded for this hearing.");
         }
 
+        // --- 1. SAVE HEARING MINUTES ---
         HearingMinutes minutes = new HearingMinutes();
         minutes.setHearing(hearing);
         minutes.setComplainantPresent(dto.complainantPresent());
@@ -253,33 +255,55 @@ public class HearingService {
         minutes.setRecordedBy(managedOfficer);
         hearingMinutesRepository.save(minutes);
 
-        // UPDATE HEARING STATUS
+        // --- 2. UPDATE HEARING STATUS ---
         hearing.setStatus(HearingStatus.COMPLETED);
         hearingRepository.save(hearing);
 
         BlotterCase bc = hearing.getBlotterCase();
+        TimelineEventType eventType = TimelineEventType.HEARING_CONDUCTED; // Default
+        String additionalTimelineDesc = "";
+
         if (dto.outcome() == HearingOutcome.SETTLED) {
+            if (dto.settlementTerms() == null || dto.settlementTerms().isBlank()) {
+                throw new IllegalArgumentException("Settlement agreement terms must be provided when outcome is SETTLED.");
+            }
+
             bc.setStatus(CaseStatus.SETTLED);
+            bc.setSettlementTerms(dto.settlementTerms());
+            bc.setSettledAt(LocalDateTime.now());
+            eventType = TimelineEventType.CASE_SETTLED; // Ibahin natin ang event type para exact sa timeline
+            additionalTimelineDesc = " | Agreement: " + dto.settlementTerms();
+
+            // WAG KALIMUTAN ITO: I-cancel ang mga naka-schedule pang hearing para sa kasong ito
+            List<Hearing> pendingHearings = hearingRepository.findByBlotterCaseAndStatus(bc, HearingStatus.SCHEDULED);
+            if (!pendingHearings.isEmpty()) {
+                for (Hearing h : pendingHearings) {
+                    h.setStatus(HearingStatus.CANCELLED);
+                    h.setNotes("Auto-cancelled because case was settled in Hearing ID: " + hearing.getId());
+                }
+                hearingRepository.saveAll(pendingHearings);
+            }
+
         } else if (dto.outcome() == HearingOutcome.NOT_SETTLED) {
             bc.setStatus(CaseStatus.UNDER_MEDIATION);
         }
         blotterCaseRepository.save(bc);
 
-
+        // --- 4. CREATE TIMELINE RECORD ---
         CaseTimeline timeline = new CaseTimeline();
-        timeline.setBlotterCase(hearing.getBlotterCase());
-        timeline.setEventType(TimelineEventType.HEARING_CONDUCTED);
-
+        timeline.setBlotterCase(bc);
+        timeline.setEventType(eventType);
         timeline.setTitle("Mediation " + hearing.getSummonNumber() + " Result: " + dto.outcome());
 
         String attendance = String.format("Attendance: Complainant (%s), Respondent (%s). ",
                 dto.complainantPresent() ? "Present" : "Absent",
                 dto.respondentPresent() ? "Present" : "Absent");
 
-        timeline.setDescription(attendance + "Summary: " + dto.hearingNotes());
-        timeline.setPerformedBy(officer);
-        caseTimeLineRepository.save(timeline);
+        timeline.setDescription(attendance + "Summary: " + dto.hearingNotes() + additionalTimelineDesc);
+        timeline.setPerformedBy(managedOfficer);
+        caseTimeLineRepository.save(timeline); // Tiningnan ko yung code mo, "caseTimeLineRepository" ang na-type mo, make sure tama ang case (Timeline vs TimeLine)
 
+        // --- 5. LOG ACTIVITY ---
         logMinutesActivity(managedOfficer, bc, hearing, dto.outcome(), ipAddress);
     }
 
