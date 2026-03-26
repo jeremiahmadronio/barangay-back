@@ -114,15 +114,12 @@ public class BlotterFormComplaintService {
         return blotter.getBlotterNumber();
     }
 
-    private void saveEvidenceRecords(List<String> evidenceTypeIds, BlotterCase blotter, User officer) {
-        if (evidenceTypeIds != null) {
-            for (String input : evidenceTypeIds) {
-                EvidenceType eType = evidenceTypeRepository.findByTypeName(input)
-                        .orElseGet(() -> {
-                            EvidenceType newType = new EvidenceType();
-                            newType.setTypeName(input);
-                            return evidenceTypeRepository.save(newType);
-                        });
+    private void saveEvidenceRecords(List<Long> evidenceTypeIds, BlotterCase blotter, User officer) {
+        if (evidenceTypeIds != null && !evidenceTypeIds.isEmpty()) {
+            for (Long typeId : evidenceTypeIds) {
+
+                EvidenceType eType = evidenceTypeRepository.findById(typeId)
+                        .orElseThrow(() -> new RuntimeException("Evidence Type ID " + typeId + " not found."));
 
                 EvidenceRecord er = new EvidenceRecord();
                 er.setBlotterCase(blotter);
@@ -168,7 +165,8 @@ public class BlotterFormComplaintService {
         blotter.setDepartment(userDept);
         blotter.setCertifiedAt(LocalDateTime.now());
         blotter.setCreatedBy(managedOfficer);
-        blotterRepository.save(blotter);
+        blotter.setIsCertified(true);
+    blotterRepository.save(blotter);
 
         CaseTimeline timeline = new CaseTimeline();
         timeline.setBlotterCase(blotter);
@@ -210,7 +208,6 @@ public class BlotterFormComplaintService {
 
         rLink.setRelationshipType(relType);
         rLink.setAlias(dto.respondentAlias());
-        rLink.setOccupation(dto.respondentOccupation());
         rLink.setLivingWithComplainant(dto.livingWithComplainant());
         respondentRepository.save(rLink);
 
@@ -384,7 +381,6 @@ public class BlotterFormComplaintService {
                 });
         rLink.setDateOfBirth(dto.respondentDob());
         rLink.setAlias(dto.respondentAlias());
-        rLink.setOccupation(dto.respondentOccupation());
         rLink.setRelationshipType(relType);
         respondentRepository.save(rLink);
 

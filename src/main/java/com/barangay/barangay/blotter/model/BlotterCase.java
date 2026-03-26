@@ -35,6 +35,8 @@ public class BlotterCase {
     @Column(nullable = false)
     private CaseType caseType;
 
+
+
     @Column(nullable = false)
     private LocalDateTime dateFiled;
 

@@ -1,3 +1,5 @@
+package com.barangay.barangay.scheduler;
+
 import com.barangay.barangay.admin_management.model.User;
 import com.barangay.barangay.admin_management.repository.Root_AdminRepository;
 import lombok.RequiredArgsConstructor;

@@ -57,7 +57,11 @@ public record BlotterDocketViewDTO (
 
 
         String agreementsTerm,
-        LocalDateTime agreementDate
+        LocalDateTime agreementDate,
+
+        List<CaseHandleByDTO> luponManagement
+
+
 
 
 ){

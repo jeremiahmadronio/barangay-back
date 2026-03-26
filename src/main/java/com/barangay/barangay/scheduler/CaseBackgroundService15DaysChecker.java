@@ -1,4 +1,4 @@
-package com.barangay.barangay.blotter.service;
+package com.barangay.barangay.scheduler;
 
 import com.barangay.barangay.blotter.model.BlotterCase;
 import com.barangay.barangay.blotter.model.CaseNote;

@@ -4,5 +4,6 @@ public enum HearingStatus {
     SCHEDULED,
     COMPLETED,
     CANCELLED,
-    RESCHEDULED
+    RESCHEDULED,
+    PENDING_MINUTES
 }

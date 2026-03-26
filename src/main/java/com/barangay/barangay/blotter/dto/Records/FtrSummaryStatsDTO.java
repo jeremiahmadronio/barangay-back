@@ -4,10 +4,8 @@ public record FtrSummaryStatsDTO (
         long totalFtr,
         double ftrTrend,
 
-        long totalEscalated,
-        double escalatedTrend,
-
-        double escalationRate,
+        long frequentSubjectsCount,
+        String mostReportedIssue,
 
         String peakIncidentTime,
         long peakTimeCount

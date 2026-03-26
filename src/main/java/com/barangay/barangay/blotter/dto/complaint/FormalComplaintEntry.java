@@ -22,7 +22,6 @@ public record FormalComplaintEntry(
         String complainantEmail,
          String complainantAddress,
 
-        // Section 3: Respondent
        String respondentLastName,
          String respondentFirstName,
         String respondentMiddleName,
@@ -31,13 +30,11 @@ public record FormalComplaintEntry(
         LocalDate respondentDob,
         String respondentGender,
         String respondentCivilStatus,
-        String respondentOccupation,
         String respondentContact,
         String respondentAddress,
          String relationshipTypeName,
         boolean livingWithComplainant,
 
-        // Section 4: Incident Details
         @NotNull Long natureOfComplaintId,
 
         @NotNull LocalDate dateOfIncident,

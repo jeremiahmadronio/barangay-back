@@ -13,6 +13,7 @@ import com.barangay.barangay.blotter.repository.*;
 import com.barangay.barangay.department.model.Department;
 import com.barangay.barangay.enumerated.CaseStatus;
 import com.barangay.barangay.enumerated.CaseType;
+import com.barangay.barangay.lupon.repository.PangkatCompositionRepository;
 import com.barangay.barangay.resident.model.People;
 import com.barangay.barangay.resident.repository.WitnessRepository;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +43,7 @@ public class BlotterServiceViewOnly {
     private final HearingMinutesRepository hearingMinutesRepository;
     private final CaseNoteRepository caseNoteRepository;
     private final IncidentFrequencyRepository incidentFrequencyRepository;
+    private final PangkatCompositionRepository pangkatCompositionRepository;
 
 
     @Transactional(readOnly = true)
@@ -50,9 +52,18 @@ public class BlotterServiceViewOnly {
             String search, String status, Long natureId,
             LocalDate start, LocalDate end, Pageable pageable) {
 
-        Department userDept = officer.getAllowedDepartments().stream()
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("Unauthorized: No department assigned."));
+        List<Long> deptIds = officer.getAllowedDepartments().stream()
+                .map(Department::getId)
+                .collect(Collectors.toCollection(ArrayList::new));
+
+        if (deptIds.isEmpty()) {
+            throw new RuntimeException("Unauthorized: No department assigned.");
+        }
+
+
+        if (deptIds.contains(3L) && !deptIds.contains(4L)) {
+            deptIds.add(4L);
+        }
 
         CaseType targetType = CaseType.FOR_THE_RECORD;
 
@@ -62,7 +73,7 @@ public class BlotterServiceViewOnly {
                 natureId,
                 start,
                 end,
-                userDept.getId(),
+                deptIds,
                 targetType
         );
 
@@ -85,6 +96,11 @@ public class BlotterServiceViewOnly {
                 ? bc.getReceivingOfficer().getFirstName() + " " + bc.getReceivingOfficer().getLastName()
                 : "Unassigned / System Generated";
 
+
+        String relationshipName = (bc.getRespondent() != null && bc.getRespondent().getRelationshipType() != null)
+                ? bc.getRespondent().getRelationshipType().getName()
+                : "N/A";
+
         return new BlotterRecordViewDTO(
                 bc.getId(),
                 bc.getBlotterNumber(),
@@ -95,12 +111,12 @@ public class BlotterServiceViewOnly {
                 bc.getComplainant().getPerson().getContactNumber(),
                 bc.getComplainant().getPerson().getCompleteAddress(),
                 bc.getComplainant().getPerson().getCivilStatus(),
-                (int) bc.getComplainant().getPerson().getAge(),
+                bc.getComplainant().getPerson().getAge() != null ? bc.getComplainant().getPerson().getAge().intValue() : 0,
                 bc.getComplainant().getPerson().getGender(),
                 bc.getComplainant().getPerson().getEmail(),
                 bc.getRespondent().getPerson().getFirstName() + " " + bc.getRespondent().getPerson().getLastName() ,
                 bc.getRespondent().getPerson().getContactNumber(),
-                bc.getRespondent().getRelationshipType().getName(),
+                relationshipName,
                 bc.getRespondent().getPerson().getCompleteAddress(),
                 bc.getIncidentDetail().getNatureOfComplaint().getName(),
                 bc.getIncidentDetail().getDateOfIncident(),
@@ -124,9 +140,20 @@ public class BlotterServiceViewOnly {
             String search, String status, Long natureId,
             LocalDate start, LocalDate end, Pageable pageable) {
 
-        Department userDept = officer.getAllowedDepartments().stream()
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("Unauthorized: No department assigned."));
+        List<Long> deptIds = officer.getAllowedDepartments().stream()
+                .map(Department::getId)
+                .collect(Collectors.toCollection(ArrayList::new));
+
+        if (deptIds.isEmpty()) {
+            throw new RuntimeException("Unauthorized: No department assigned.");
+        }
+
+
+        if (deptIds.contains(3L)) {
+            if (!deptIds.contains(4L)) {
+                deptIds.add(7L);
+            }
+        }
 
         Specification<BlotterCase> spec = BlotterRecordsSpecificationsFiltering.buildFormalDocketFilter(
                 search,
@@ -134,7 +161,7 @@ public class BlotterServiceViewOnly {
                 natureId,
                 start,
                 end,
-                userDept.getId(),
+                deptIds,
                 CaseType.FORMAL_COMPLAINT
         );
 
@@ -175,6 +202,8 @@ public class BlotterServiceViewOnly {
         BlotterCase bc = blotterRepository.findByBlotterNumber(blotterNumber)
                 .orElseThrow(() -> new RuntimeException(" Docket Case not found: " + blotterNumber));
 
+
+
         LocalDateTime filedDateTime = bc.getDateFiled();
         LocalDate deadline = (filedDateTime != null) ? filedDateTime.toLocalDate().plusDays(15) : LocalDate.now().plusDays(15);
         long remaining = java.time.temporal.ChronoUnit.DAYS.between(LocalDate.now(), deadline);
@@ -199,6 +228,14 @@ public class BlotterServiceViewOnly {
                             w.getTestimony()
                     );
                 }).toList();
+
+        List<CaseHandleByDTO> luponManagement = pangkatCompositionRepository.findByBlotterCaseId(bc.getId())
+                .stream()
+                .map(p -> new CaseHandleByDTO(
+                        p.getFirstName(),
+                        p.getLastName(),
+                        p.getPosition()
+                )).toList();
 
 
         return new BlotterDocketViewDTO(
@@ -250,7 +287,9 @@ public class BlotterServiceViewOnly {
                 evidence,
                 witnesses,
                 bc.getSettlementTerms(),
-                bc.getSettledAt()
+                bc.getSettledAt(),
+                luponManagement
+
         );
     }
 
@@ -270,7 +309,7 @@ public class BlotterServiceViewOnly {
                 : "Date not recorded";
 
         boolean s2 = hCount > 0;
-        String s2Status = s2 ? "Summon Issued" : "Awaiting first summon";
+        String s2Status = s2 ? "Mediation Issued" : "Awaiting first Mediation   ";
 
         boolean s3 = hCount > 0;
 
@@ -296,11 +335,10 @@ public class BlotterServiceViewOnly {
     @Transactional(readOnly = true)
     public List<HearingViewDTO> getCaseHearings(String blotterNumber) {
         BlotterCase bc = blotterRepository.findByBlotterNumber(blotterNumber)
-                .orElseThrow(() -> new RuntimeException("Anlala! Case not found: " + blotterNumber));
+                .orElseThrow(() -> new RuntimeException(" Case not found: " + blotterNumber));
 
         List<Hearing> hearings = hearingRepository.findAllByBlotterCaseIdOrderByScheduledStartAsc(bc.getId());
 
-        java.util.concurrent.atomic.AtomicInteger counter = new java.util.concurrent.atomic.AtomicInteger(1);
 
         return hearings.stream()
                 .map(h -> {
@@ -326,24 +364,30 @@ public class BlotterServiceViewOnly {
     public List<BusySlotDTO> getBusySlots(LocalDate date) {
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("hh:mm a");
 
-        return hearingRepository.findActiveHearingsByDate(date).stream()
+        return hearingRepository.findActiveBlotterHearingsByDate(date).stream()
                 .map(h -> new BusySlotDTO(
                         h.getScheduledStart().toLocalTime().format(timeFormatter),
                         h.getScheduledEnd().toLocalTime().format(timeFormatter),
                         h.getBlotterCase().getBlotterNumber(),
-                        h.getBlotterCase().getIncidentDetail().getNatureOfComplaint().getName()
+                        h.getBlotterCase().getIncidentDetail().getNatureOfComplaint() != null
+                                ? h.getBlotterCase().getIncidentDetail().getNatureOfComplaint().getName()
+                                : "N/A"
                 )).toList();
     }
 
     @Transactional(readOnly = true)
     public List<CalendarMarkerDTO> getMonthMarkers(int year, int month) {
         LocalDateTime start = LocalDateTime.of(year, month, 1, 0, 0);
-        LocalDateTime end = start.plusMonths(1).minusSeconds(1);
+        LocalDateTime end = start.plusMonths(1).minusNanos(1);
 
-        return hearingRepository.findAllActiveInMonth(start, end).stream()
+        List<Hearing> activeHearings = hearingRepository.findAllActiveBlotterInMonth(start, end);
+        return activeHearings.stream()
                 .collect(Collectors.groupingBy(h -> h.getScheduledStart().toLocalDate()))
                 .entrySet().stream()
-                .map(entry -> new CalendarMarkerDTO(entry.getKey().toString(), entry.getValue().size()))
+                .map(entry -> new CalendarMarkerDTO(
+                        entry.getKey().toString(),
+                        entry.getValue().size()
+                ))
                 .toList();
     }
 

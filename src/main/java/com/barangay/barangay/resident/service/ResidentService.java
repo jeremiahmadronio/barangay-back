@@ -187,4 +187,15 @@ public class ResidentService {
 
 
 
+
+    @Transactional(readOnly = true)
+    public ResidentStatsDTO getResidentDashboardStats() {
+        return new ResidentStatsDTO(
+                residentRepository.count(),
+                residentRepository.countByIsVoterTrue(),
+                residentRepository.countSeniorCitizens(),
+                residentRepository.countByIsHeadOfFamilyTrue()
+        );
+    }
+
 }

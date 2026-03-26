@@ -34,5 +34,5 @@ public record RecordBlotterEntry(
 
         @NotBlank String narrativeStatement,
 
-        List<String>evidenceTypeIds
+        List<Long>evidenceTypeIds
 ) {}

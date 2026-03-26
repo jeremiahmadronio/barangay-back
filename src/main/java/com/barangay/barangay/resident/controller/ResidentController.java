@@ -1,10 +1,7 @@
 package com.barangay.barangay.resident.controller;
 
 import com.barangay.barangay.audit.service.IpAddressUtils;
-import com.barangay.barangay.resident.dto.PersonSearchResponseDTO;
-import com.barangay.barangay.resident.dto.ResidentProfileViewDTO;
-import com.barangay.barangay.resident.dto.ResidentRegistrationRequestDTO;
-import com.barangay.barangay.resident.dto.ResidentSummary;
+import com.barangay.barangay.resident.dto.*;
 import com.barangay.barangay.resident.model.Resident;
 import com.barangay.barangay.resident.service.ResidentService;
 import com.barangay.barangay.security.CustomUserDetails;
@@ -27,6 +24,12 @@ public class ResidentController {
     private final ResidentService residentService;
 
 
+
+    @GetMapping("/stats")
+    public ResponseEntity<ResidentStatsDTO> getResidentStats() {
+        ResidentStatsDTO stats = residentService.getResidentDashboardStats();
+        return ResponseEntity.ok(stats);
+    }
 
     @PostMapping("/register")
     public ResponseEntity<?> registerResident(
@@ -63,4 +66,7 @@ public class ResidentController {
             @RequestParam(required = false) String household) {
         return ResponseEntity.ok(residentService.getResidentTable(search, gender, isVoter, household));
     }
+
+
+
 }

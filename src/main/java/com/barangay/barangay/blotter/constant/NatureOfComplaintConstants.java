@@ -12,6 +12,14 @@ public class NatureOfComplaintConstants {
             "Trespassing",
             "Debt / Financial Dispute",
             "Unjust Vexation",
-            "Grave Coercion"
+            "Grave Coercion",
+            "Boundary / Land Dispute",
+            "Family / Relational Dispute",
+            "Noise Nuisance (Videoke, Loud Music)",
+            "Animal Nuisance (Stray/Noise/Waste)",
+            "Public Disturbance / Scandal",
+            "Illegal Parking / Obstruction",
+            "Violation of Barangay Ordinance",
+            "Others (Specify in Narrative)"
     );
 }

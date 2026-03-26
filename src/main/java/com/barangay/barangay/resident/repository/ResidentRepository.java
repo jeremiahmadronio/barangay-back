@@ -38,6 +38,14 @@ public interface ResidentRepository extends JpaRepository<Resident, Long> {
 
 
 
+    long countByIsVoterTrue();
+
+    long countByIsHeadOfFamilyTrue();
+
+
+    @Query("SELECT COUNT(r) FROM Resident r WHERE r.person.age IS NOT NULL AND r.person.age >= 60")
+    long countSeniorCitizens();
+
 
 
 

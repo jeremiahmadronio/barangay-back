@@ -208,4 +208,10 @@ public class BlotterController {
         return ResponseEntity.ok(blotterServiceViewOnly.getFrequencyOptions());
     }
 
+
+    @GetMapping("/timeline/{caseId}")
+    public ResponseEntity<List<CaseTimeLineDTO>> getCaseTimeline(@PathVariable String caseId) {
+        return ResponseEntity.ok(blotterService.getTimelineByCase(caseId));
+    }
+
 }

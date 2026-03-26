@@ -36,21 +36,19 @@ public class HearingService {
 
     @Transactional
     public void scheduleNewHearing(ScheduleHearingRequest dto, User officer, String ipAddress) {
-
         User managedOfficer = userManagementRepository.findByIdWithDepartments(officer.getId())
                 .orElseThrow(() -> new RuntimeException("Officer session invalid."));
-
         validateOfficerAccess(managedOfficer);
 
         BlotterCase blotterCase = blotterCaseRepository.findByBlotterNumber(dto.blotterNumber())
                 .orElseThrow(() -> new RuntimeException("Case not found: " + dto.blotterNumber()));
 
-        if (dto.scheduledEnd().isBefore(dto.scheduledStart()) || dto.scheduledEnd().isEqual(dto.scheduledStart())) {
-            throw new RuntimeException("Invalid schedule: The end time cannot be earlier than or equal to the start time.");
+        if (!dto.scheduledEnd().isAfter(dto.scheduledStart())) {
+            throw new RuntimeException("Invalid schedule: End time must be after start time.");
         }
 
-        if (hearingRepository.existsOverlapping(dto.venue(), dto.scheduledStart(), dto.scheduledEnd())) {
-            throw new RuntimeException("Scheduling conflict: The venue '" + dto.venue() + "' is already occupied during the specified time range.");
+        if (hearingRepository.existsActiveLuponOverlapping(dto.venue(), dto.scheduledStart(), dto.scheduledEnd())) {
+            throw new RuntimeException("Conflict: The venue '" + dto.venue() + "' is occupied by an active/scheduled hearing.");
         }
 
         Short nextSummon = (short) (hearingRepository.findLastSummonNumber(blotterCase.getId()) + 1);
@@ -63,26 +61,38 @@ public class HearingService {
         hearing.setVenue(dto.venue());
         hearing.setNotes(dto.notes());
         hearing.setCreatedBy(managedOfficer);
+        hearing.setStatus(HearingStatus.SCHEDULED);
         hearingRepository.save(hearing);
 
+        String oldStatus = blotterCase.getStatus().toString();
         if (blotterCase.getStatus() == CaseStatus.PENDING) {
             blotterCase.setStatus(CaseStatus.UNDER_MEDIATION);
             blotterCaseRepository.save(blotterCase);
         }
-
+        String newStatus = blotterCase.getStatus().toString();
 
         CaseTimeline timeline = new CaseTimeline();
         timeline.setBlotterCase(blotterCase);
-        timeline.setEventType(TimelineEventType.SUMMON_ISSUED); //
+        timeline.setEventType(TimelineEventType.SUMMON_ISSUED);
         timeline.setTitle("Mediation " + hearing.getSummonNumber() + " Issued");
-        timeline.setDescription("Mediation   scheduled on " +
-                hearing.getScheduledStart().toLocalDate() + " at " + hearing.getVenue());
+        timeline.setDescription("Mediation scheduled on " + hearing.getScheduledStart().toLocalDate() +
+                " at " + hearing.getVenue());
         timeline.setPerformedBy(managedOfficer);
         caseTimeLineRepository.save(timeline);
 
-        logHearingActivity(managedOfficer, blotterCase, hearing, ipAddress);
+        // 9. Audit Logging (Including Old and New Status of the Case)
+        auditLogService.log(
+                managedOfficer,
+                Departments.LUPONG_TAGAPAMAYAPA,
+                "SCHEDULE_NEW_MEDIATION",
+                Severity.INFO,
+                "Scheduled Mediation #" + hearing.getSummonNumber() + " for Case " + blotterCase.getBlotterNumber(),
+                ipAddress,
+                "Venue: " + hearing.getVenue(),
+                "CaseStatus: " + oldStatus,
+                "CaseStatus: " + newStatus
+        );
     }
-
 
 
 
@@ -106,7 +116,7 @@ public class HearingService {
         CaseTimeline timeline = new CaseTimeline();
         timeline.setBlotterCase(hearing.getBlotterCase());
         timeline.setEventType(TimelineEventType.HEARING_FOLLOWUP);
-        timeline.setTitle("Follow-up added for Mediation #" + hearing.getSummonNumber());
+        timeline.setTitle("Follow-up added for Mediation " + hearing.getSummonNumber());
         timeline.setDescription("Mediation follow up " + dto.notes());
         timeline.setPerformedBy(managedOfficer);
         caseTimeLineRepository.save(timeline);
@@ -186,48 +196,15 @@ public class HearingService {
 
 
     private void validateOfficerAccess(User officer) {
-        boolean isBlotterDept = officer.getAllowedDepartments().stream()
-                .anyMatch(d -> d.getName().equalsIgnoreCase("BLOTTER") || d.getId() == 3L);
 
         boolean hasCreatePerm = officer.getCustomPermissions().stream()
                 .anyMatch(p -> p.getPermissionName().equalsIgnoreCase("Manage Hearings & Mediation"));
 
-        if (!isBlotterDept || !hasCreatePerm) {
+        if ( !hasCreatePerm) {
             throw new RuntimeException("Access Denied: You don't have permission to schedule hearings.");
         }
     }
 
-    private void logHearingActivity(User officer, BlotterCase bc, Hearing h, String ip) {
-        try {
-            Map<String, Object> snapshot = new LinkedHashMap<>();
-            snapshot.put("Case Number", bc.getBlotterNumber());
-            snapshot.put("Mediation Number", "Mediation #" + h.getSummonNumber());
-
-            String timeRange = String.format("%s - %s",
-                    h.getScheduledStart().toLocalTime(),
-                    h.getScheduledEnd().toLocalTime());
-
-            snapshot.put("Mediation Date", h.getScheduledStart().toLocalDate().toString());
-            snapshot.put("Time Slot", timeRange);
-            snapshot.put("Venue", h.getVenue());
-
-            String jsonState = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(snapshot);
-
-            auditLogService.log(
-                    officer,
-                    Departments.BLOTTER,
-                    "MEDIATION_SCHEDULED",
-                    Severity.INFO,
-                    "SCHEDULE_MEDIATION",
-                    ip,
-                    "Scheduled " + snapshot.get("Mediation Number") + " for Case " + bc.getBlotterNumber(),
-                    null,
-                    jsonState
-            );
-        } catch (Exception e) {
-            auditLogService.log(officer, null, "ERROR", Severity.CRITICAL, "LOG_FAIL", ip, "Audit log failed: " + e.getMessage(), null, null);
-        }
-    }
 
 
 
@@ -274,7 +251,6 @@ public class HearingService {
             eventType = TimelineEventType.CASE_SETTLED; // Ibahin natin ang event type para exact sa timeline
             additionalTimelineDesc = " | Agreement: " + dto.settlementTerms();
 
-            // WAG KALIMUTAN ITO: I-cancel ang mga naka-schedule pang hearing para sa kasong ito
             List<Hearing> pendingHearings = hearingRepository.findByBlotterCaseAndStatus(bc, HearingStatus.SCHEDULED);
             if (!pendingHearings.isEmpty()) {
                 for (Hearing h : pendingHearings) {
@@ -289,19 +265,16 @@ public class HearingService {
         }
         blotterCaseRepository.save(bc);
 
-        // --- 4. CREATE TIMELINE RECORD ---
         CaseTimeline timeline = new CaseTimeline();
         timeline.setBlotterCase(bc);
         timeline.setEventType(eventType);
         timeline.setTitle("Mediation " + hearing.getSummonNumber() + " Result: " + dto.outcome());
 
-        String attendance = String.format("Attendance: Complainant (%s), Respondent (%s). ",
-                dto.complainantPresent() ? "Present" : "Absent",
-                dto.respondentPresent() ? "Present" : "Absent");
 
-        timeline.setDescription(attendance + "Summary: " + dto.hearingNotes() + additionalTimelineDesc);
+
+        timeline.setDescription("Summary: " + dto.hearingNotes() + additionalTimelineDesc);
         timeline.setPerformedBy(managedOfficer);
-        caseTimeLineRepository.save(timeline); // Tiningnan ko yung code mo, "caseTimeLineRepository" ang na-type mo, make sure tama ang case (Timeline vs TimeLine)
+        caseTimeLineRepository.save(timeline);
 
         // --- 5. LOG ACTIVITY ---
         logMinutesActivity(managedOfficer, bc, hearing, dto.outcome(), ipAddress);

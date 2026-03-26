@@ -2,25 +2,21 @@ package com.barangay.barangay.dataseed;
 
 import com.barangay.barangay.audit.model.AuditLog;
 import com.barangay.barangay.audit.repository.AuditLogRepository;
+import com.barangay.barangay.blotter.model.*;
 import com.barangay.barangay.blotter.model.EvidenceType;
-import com.barangay.barangay.blotter.model.IncidentFrequency;
-import com.barangay.barangay.blotter.model.NatureOfComplaint;
-import com.barangay.barangay.blotter.model.RelationshipType;
-import com.barangay.barangay.blotter.repository.EvidenceTypeRepository;
-import com.barangay.barangay.blotter.repository.IncidentFrequencyRepository;
-import com.barangay.barangay.blotter.repository.NatureOfComplaintRepository;
-import com.barangay.barangay.blotter.repository.RelationshipTypeRepository;
+import com.barangay.barangay.blotter.repository.*;
 import com.barangay.barangay.department.model.Department;
+import com.barangay.barangay.enumerated.*;
 import com.barangay.barangay.permission.model.Permission;
+import com.barangay.barangay.resident.model.*;
+import com.barangay.barangay.resident.repository.PeopleRepository;
+import com.barangay.barangay.resident.repository.ResidentRepository;
 import com.barangay.barangay.role.model.Role;
-import com.barangay.barangay.enumerated.Departments;
 import com.barangay.barangay.admin_management.model.User;
 import com.barangay.barangay.department.repository.DepartmentRepository;
 import com.barangay.barangay.permission.repository.PermissionRepository;
 import com.barangay.barangay.role.repository.RoleRepository;
 import com.barangay.barangay.admin_management.repository.Root_AdminRepository;
-import com.barangay.barangay.enumerated.Status;
-import com.barangay.barangay.enumerated.Severity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -28,11 +24,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.time.LocalTime;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
@@ -53,10 +48,23 @@ public class DataInitializer implements CommandLineRunner {
     private final IncidentFrequencyRepository incidentFrequencyRepository;
     private final EvidenceTypeRepository evidenceTypeRepository;
 
+    private final BlotterCaseRepository blotterCaseRepository;
+    private final CasteTimeLineRepository caseTimelineRepository;
+
+    private final PeopleRepository peopleRepository;
+    private final ResidentRepository residentRepository;
+
+
+
 
     @Override
     @Transactional
     public void run(String... args) {
+
+        if (residentRepository.count() == 0) {
+            seedResidents(100);
+        }
+
 
         // ── Departments ──────────────────────────────────────────────────────
         Department adminDept = createDeptIfNotFound("ADMINISTRATION");
@@ -126,15 +134,22 @@ public class DataInitializer implements CommandLineRunner {
 
         createEvidenceTypeIfNotFound("Other Supporting Documents/Items");
 
-
         createNatureIfNotFound("Physical Injury");
         createNatureIfNotFound("Slander / Oral Defamation");
         createNatureIfNotFound("Theft");
         createNatureIfNotFound("Threats");
         createNatureIfNotFound("Trespassing");
+        createNatureIfNotFound("Grave Coercion");
         createNatureIfNotFound("Debt / Financial Dispute");
         createNatureIfNotFound("Unjust Vexation");
-        createNatureIfNotFound("Grave Coercion");
+        createNatureIfNotFound("Boundary / Land Dispute");
+        createNatureIfNotFound("Family / Relational Dispute");
+        createNatureIfNotFound("Noise Nuisance (Videoke, Loud Music)");
+        createNatureIfNotFound("Animal Nuisance (Stray/Noise/Waste)");
+        createNatureIfNotFound("Public Disturbance / Scandal");
+        createNatureIfNotFound("Illegal Parking / Obstruction");
+        createNatureIfNotFound("Violation of Barangay Ordinance");
+        createNatureIfNotFound("Others (Specify in Narrative)");
 
 
         // ── Relationship Types (Reference Data) ──────────────────────────────
@@ -212,7 +227,16 @@ public class DataInitializer implements CommandLineRunner {
 
             System.out.println("Dashboard testing data seeded successfully.");
         }
+
+
     }
+
+
+
+
+
+
+    // ── Private Helpers ───────────────────────────────────────────────────────
 
     // ── Private Helpers ───────────────────────────────────────────────────────
 
@@ -315,6 +339,8 @@ public class DataInitializer implements CommandLineRunner {
         }
     }
 
+
+
     private void createFrequencyIfNotFound(String label) {
         if (incidentFrequencyRepository.findByLabel(label).isEmpty()) {
             IncidentFrequency freq = new IncidentFrequency();
@@ -330,4 +356,76 @@ public class DataInitializer implements CommandLineRunner {
             evidenceTypeRepository.save(type);
         }
     }
+
+
+
+
+    private void seedResidents(int count) {
+        String[] firstNames = {"Juan", "Maria", "Jose", "Elena", "Ricardo", "Gloria", "Roberto", "Teresa", "Fernando", "Imelda", "Francisco", "Lourdes", "Antonio", "Corazon", "Jaime", "Remedios", "Benjamin", "Carmelita", "Rodolfo", "Dolores"};
+        String[] lastNames = {"Dela Cruz", "Garcia", "Reyes", "Ramos", "Mendoza", "Santos", "Flores", "Gonzales", "Bautista", "Villanueva", "Fernandez", "Cruz", "Lopez", "Castillo", "Gomez", "Pineda", "Madronio", "De Leon", "Mercado", "Rivera"};
+        String[] genders = {"Male", "Female"};
+        String[] civilStatuses = {"Single", "Married", "Widowed", "Separated"};
+
+        List<People> peopleList = new ArrayList<>();
+        Random random = new Random();
+
+        System.out.println("Seeding 100 Filipino Residents...");
+
+        for (int i = 0; i < count; i++) {
+            People person = new People();
+            person.setFirstName(firstNames[random.nextInt(firstNames.length)]);
+            person.setLastName(lastNames[random.nextInt(lastNames.length)]);
+            person.setMiddleName(lastNames[random.nextInt(lastNames.length)]);
+            person.setGender(genders[random.nextInt(genders.length)]);
+            person.setCivilStatus(civilStatuses[random.nextInt(civilStatuses.length)]);
+            person.setContactNumber("09" + (100000000 + random.nextInt(900000000)));
+            person.setCompleteAddress("Bgy. Novaliches, Quezon City, Metro Manila");
+            person.setIsResident(true);
+            person.setEmail(person.getFirstName().toLowerCase() + i + "@example.com");
+
+            // Logic para sa Age at BirthDate
+            int age;
+            if (i < 10) {
+                // Siguradong 10 Senior Citizens (60-85 years old)
+                age = 60 + random.nextInt(25);
+            } else {
+                // Regular adults (18-59 years old)
+                age = 18 + random.nextInt(42);
+            }
+            person.setAge((short) age);
+            person.setBirthDate(LocalDate.now().minusYears(age).minusDays(random.nextInt(365)));
+
+            // I-save muna ang People (Master)
+            People savedPerson = peopleRepository.save(person);
+
+            // Gawa ng Resident Profile
+            Resident resident = new Resident();
+            resident.setPerson(savedPerson);
+            resident.setBarangayIdNumber("BID-2026-" + String.format("%04d", i));
+            resident.setHouseholdNumber("HH-" + (1000 + random.nextInt(9000)));
+            resident.setPrecinctNumber("PR-" + (100 + random.nextInt(900)));
+
+            // Logic: Lahat ng senior ay voter, 80% ng adults ay voter
+            resident.setIsVoter(age >= 60 || random.nextDouble() < 0.8);
+
+            // 25% chance na maging Head of Family
+            resident.setIsHeadOfFamily(random.nextDouble() < 0.25);
+
+            resident.setOccupation(age >= 60 ? "Retired" : "Employee");
+            resident.setCitizenship("Filipino");
+            resident.setDateOfResidency(LocalDate.now().minusYears(random.nextInt(10)));
+
+            residentRepository.save(resident);
+        }
+        System.out.println("Successfully seeded 100 residents.");
+    }
+
+
+
+
+
+
 }
+
+
+

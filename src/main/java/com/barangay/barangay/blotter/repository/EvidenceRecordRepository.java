@@ -11,4 +11,6 @@ import java.util.Optional;
 @Repository
 public interface EvidenceRecordRepository extends JpaRepository<EvidenceRecord, Long> {
     List<EvidenceRecord> findAllByBlotterCase(BlotterCase blotterCase);
+
+    List<EvidenceRecord> findByBlotterCaseId(Long caseId);
 }

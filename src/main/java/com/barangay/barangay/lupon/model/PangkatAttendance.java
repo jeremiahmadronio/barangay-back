@@ -27,7 +27,7 @@ public class PangkatAttendance {
     @JoinColumn(name = "pangkat_member_id", nullable = false)
     private PangkatComposition pangkatMember;
 
-    @Column(nullable = false)
+        @Column(nullable = false)
     private Boolean isPresent = false;
 
     @CreationTimestamp

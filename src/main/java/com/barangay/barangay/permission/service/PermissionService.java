@@ -28,29 +28,8 @@ public class PermissionService {
      private final DepartmentRepository departmentRepository;
 
     @Transactional(readOnly = true)
-    public List<PermissionOptions> getPermissionOptions(Long departmentId) {
+    public List<PermissionOptions> getPermissionOptions() {
 
-        if (departmentId != null) {
-
-            Optional<Department> departmentOpt = departmentRepository.findById(departmentId);
-
-            if (departmentOpt.isPresent() && "BLOTTER".equalsIgnoreCase(departmentOpt.get().getName())) {
-
-                List<String> blotterPermissions = List.of(
-                        "View Blotter Records",
-                        "Create Blotter Entry",
-                        "Manage Hearings & Mediation",
-                        "Update Case Status"
-                );
-
-                return permissionRepository.findByPermissionNameIn(blotterPermissions).stream()
-                        .map(permission -> new PermissionOptions(
-                                permission.getId(),
-                                permission.getPermissionName()
-                        ))
-                        .collect(Collectors.toList());
-            }
-        }
 
         return permissionRepository.findAll().stream()
                 .map(permission -> new PermissionOptions(
@@ -81,4 +60,8 @@ public class PermissionService {
                 allPermissions
         );
     }
+
+
+
+
 }

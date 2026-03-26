@@ -9,4 +9,7 @@ import java.util.List;
 @Repository
 public interface PangkatCompositionRepository extends JpaRepository<PangkatComposition, Long> {
     List<PangkatComposition> findByBlotterCaseId(Long caseId);
+
+
+
 }

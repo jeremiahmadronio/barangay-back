@@ -22,9 +22,8 @@ public class PermissionController {
     private final PermissionService permissionService;
 
     @GetMapping("/options")
-    public ResponseEntity<List<PermissionOptions>> getPermissionOptions(
-            @RequestParam(required = false) Long departmentId) {
-        return ResponseEntity.ok(permissionService.getPermissionOptions(departmentId));
+    public ResponseEntity<List<PermissionOptions>> getPermissionOptions() {
+        return ResponseEntity.ok(permissionService.getPermissionOptions());
     }
 
 

@@ -15,13 +15,15 @@ public class BlotterRecordsSpecificationsFiltering {
     public static Specification<BlotterCase> buildFormalDocketFilter(
             String search, String status, Long natureId,
             LocalDate start, LocalDate end,
-            Long departmentId, CaseType caseType) {
+            List<Long> departmentIds, CaseType caseType) { // List na ang tinatanggap dito
 
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
+            if (departmentIds != null && !departmentIds.isEmpty()) {
+                predicates.add(root.get("department").get("id").in(departmentIds));
+            }
 
-            predicates.add(cb.equal(root.get("department").get("id"), departmentId));
             predicates.add(cb.equal(root.get("caseType"), caseType));
 
             if (search != null && !search.trim().isEmpty()) {

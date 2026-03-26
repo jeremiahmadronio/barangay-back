@@ -9,6 +9,7 @@ import com.barangay.barangay.blotter.dto.complaint.EvidenceOptionDTO;
 import com.barangay.barangay.blotter.dto.complaint.NatureOptionDTO;
 import com.barangay.barangay.blotter.dto.Records.FtrSummaryStatsDTO;
 import com.barangay.barangay.blotter.dto.Records.UpdateStatusDTO;
+import com.barangay.barangay.blotter.dto.reports_and_display.CaseTimeLineDTO;
 import com.barangay.barangay.blotter.model.*;
 import com.barangay.barangay.blotter.repository.*;
 import com.barangay.barangay.department.model.Department;
@@ -21,9 +22,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -45,7 +48,6 @@ public class BlotterService {
     public void addNoteToCase(AddCaseNoteRequest dto, User officer, String ipAddress) {
         User managedOfficer = userManagementRepository.findByIdWithDepartments(officer.getId())
                 .orElseThrow(() -> new RuntimeException("Officer not found."));
-        validateOfficerAccess(managedOfficer);
 
         BlotterCase blotterCase = blotterCaseRepository.findByBlotterNumber(dto.blotterNumber())
                 .orElseThrow(() -> new RuntimeException("Case not found: " + dto.blotterNumber()));
@@ -104,15 +106,12 @@ public class BlotterService {
         CaseTimeline timeline = new CaseTimeline();
         timeline.setBlotterCase(blotter);
         timeline.setEventType(resolvedEventType);
-        timeline.setTitle("Case Status Updated to " + next.name());
-        timeline.setDescription("Status changed from " + current.name() + " to " + next.name() + ". Remarks: " + dto.reason());
+        timeline.setTitle("Case Updated to " + next.name());
+        timeline.setDescription("Reason: " + dto.reason());
         timeline.setPerformedBy(actor);
 
         caseTimeLineRepository.save(timeline);
-        // --------------------------------
 
-        // Cancel pending hearings if the case is closed/settled/dismissed
-        // Pinalawak ko 'yung logic mo dito. Kasi kung dismissed na yung kaso, bakit pa magkaka-hearing?
         if (next == CaseStatus.SETTLED || next == CaseStatus.DISMISSED) {
             List<Hearing> pendingHearings = hearingRepository.findByBlotterCaseAndStatus(blotter, HearingStatus.SCHEDULED);
 
@@ -174,7 +173,7 @@ public class BlotterService {
                 .anyMatch(d -> d.getName().equalsIgnoreCase("BLOTTER") || d.getId() == 3L);
 
         boolean hasCreatePerm = officer.getCustomPermissions().stream()
-                .anyMatch(p -> p.getPermissionName().equalsIgnoreCase("Create Records"));
+                .anyMatch(p -> p.getPermissionName().equalsIgnoreCase("Manage Hearings & Mediation"));
 
         if (!isBlotterDept || !hasCreatePerm) {
             throw new RuntimeException("Unauthorized: Access denied. User must be in the Blotter Department with 'Create Records' permission..");
@@ -230,65 +229,79 @@ public class BlotterService {
 
 
 
-
     @Transactional(readOnly = true)
     public FtrSummaryStatsDTO getFtrDashboardStats(User officer) {
+        // Kumuha lang ng isang ID (Blotter ID 3)
         Long deptId = officer.getAllowedDepartments().stream()
                 .findFirst()
                 .map(Department::getId)
-                .orElseThrow(() -> new RuntimeException("No department assigned."));
+                .orElseThrow(() -> new RuntimeException("Unauthorized: No department assigned."));
 
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime startThisMonth = now.withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
         LocalDateTime startLastMonth = startThisMonth.minusMonths(1);
 
-        long curFtr = blotterCaseRepository.countTotalFtr(deptId, startThisMonth, now);
-        long prevFtr = blotterCaseRepository.countTotalFtr(deptId, startLastMonth, startThisMonth.minusSeconds(1));
+        // 1. Total FTR and Trend
+        long curFtr = blotterCaseRepository.countFtrByType(deptId, CaseType.FOR_THE_RECORD, startThisMonth, now);
+        long prevFtr = blotterCaseRepository.countFtrByType(deptId, CaseType.FOR_THE_RECORD, startLastMonth, startThisMonth.minusSeconds(1));
 
-        long curEscalated = blotterCaseRepository.countEscalatedFtr(deptId, startThisMonth, now);
-        long prevEscalated = blotterCaseRepository.countEscalatedFtr(deptId, startLastMonth, startThisMonth.minusSeconds(1));
+        // 2. Frequent Subjects (Suki)
+        long frequentSubjects = blotterCaseRepository.countFrequentFtrSubjects(deptId, startThisMonth);
 
-        // 4. Escalation Formula Calculation
-        double escalationRate = 0.0;
-        if (curFtr > 0) {
-            escalationRate = ((double) curEscalated / curFtr) * 100.0;
-        }
+        // 3. Top Nature
+        String topNature = blotterCaseRepository.findTopFtrNature(deptId, startThisMonth)
+                .orElse("General Record");
 
-        List<LocalTime> incidentTimes = blotterCaseRepository.findFtrIncidentTimesThisMonth(deptId, startThisMonth);
+        // 4. Peak Time Logic
+        List<java.sql.Time> rawTimes = blotterCaseRepository.findFtrIncidentTimesRaw(deptId, startThisMonth);
+        List<LocalTime> incidentTimes = rawTimes.stream().map(java.sql.Time::toLocalTime).collect(Collectors.toList());
 
-        long morning = 0, afternoon = 0, evening = 0, lateNight = 0;
-        for (LocalTime time : incidentTimes) {
-            int hour = time.getHour();
-            if (hour >= 6 && hour < 12) morning++;
-            else if (hour >= 12 && hour < 18) afternoon++;
-            else if (hour >= 18 && hour < 23) evening++;
-            else lateNight++;
-        }
+        String peakShift = "No Data Yet";
+        long maxCount = 0;
 
-        long maxCount = morning;
-        String peakShift = "Morning (6 AM - 12 PM)";
-
-        if (afternoon > maxCount) { maxCount = afternoon; peakShift = "Afternoon (12 PM - 6 PM)"; }
-        if (evening > maxCount) { maxCount = evening; peakShift = "Evening (6 PM - 12 AM)"; }
-        if (lateNight > maxCount) { maxCount = lateNight; peakShift = "Late Night (12 AM - 6 AM)"; }
-
-        if (incidentTimes.isEmpty()) {
-            peakShift = "No Data Yet";
+        if (!incidentTimes.isEmpty()) {
+            long morning = 0, afternoon = 0, evening = 0, lateNight = 0;
+            for (LocalTime time : incidentTimes) {
+                int hour = time.getHour();
+                if (hour >= 6 && hour < 12) morning++;
+                else if (hour >= 12 && hour < 18) afternoon++;
+                else if (hour >= 18 && hour < 23) evening++;
+                else lateNight++;
+            }
+            maxCount = morning; peakShift = "Morning (6AM-12PM)";
+            if (afternoon > maxCount) { maxCount = afternoon; peakShift = "Afternoon (12PM-6PM)"; }
+            if (evening > maxCount) { maxCount = evening; peakShift = "Evening (6PM-12AM)"; }
+            if (lateNight > maxCount) { maxCount = lateNight; peakShift = "Late Night (12AM-6AM)"; }
         }
 
         return new FtrSummaryStatsDTO(
                 curFtr, calculateTrend(curFtr, prevFtr),
-                curEscalated, calculateTrend(curEscalated, prevEscalated),
-                escalationRate,
+                frequentSubjects,
+                topNature,
                 peakShift, maxCount
         );
     }
-
     private double calculateTrend(long current, long previous) {
         if (previous == 0) return current > 0 ? 100.0 : 0.0;
         return ((double) (current - previous) / previous) * 100.0;
     }
 
+
+
+    public List<CaseTimeLineDTO> getTimelineByCase(String caseId) {
+        return caseTimeLineRepository.findByBlotterCase_BlotterNumberOrderByEventDateDesc(caseId)
+                .stream()
+                .map(t -> new CaseTimeLineDTO(
+                        t.getId(),
+                        t.getEventType(),
+                        t.getTitle(),
+                        t.getDescription(),
+                        t.getPerformedBy() != null ?
+                                t.getPerformedBy().getFirstName() + " " + t.getPerformedBy().getLastName() : "System",
+                        t.getEventDate()
+                ))
+                .collect(Collectors.toList());
+    }
 
 
 }
