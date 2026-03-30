@@ -60,6 +60,9 @@ public class People {
     @Column(length = 255)
     private String email;
 
+    @Column(length = 100)
+    private String occupation;
+
 
     @OneToMany(mappedBy = "person", fetch = FetchType.LAZY)
     private List<Complainant> asComplainant;

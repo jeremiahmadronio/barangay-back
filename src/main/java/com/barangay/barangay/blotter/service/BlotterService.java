@@ -64,7 +64,7 @@ public class BlotterService {
         timeline.setBlotterCase(blotterCase);
 
         timeline.setEventType(TimelineEventType.NOTE_ADDED);
-        timeline.setTitle("New Follow-up Note Added");
+        timeline.setTitle("Note Added");
 
         String noteSnippet = dto.note().length() > 100
                 ? dto.note().substring(0, 97) + "..."
@@ -167,18 +167,7 @@ public class BlotterService {
         }
     }
 
-    private void validateOfficerAccess(User officer) {
 
-        boolean isBlotterDept = officer.getAllowedDepartments().stream()
-                .anyMatch(d -> d.getName().equalsIgnoreCase("BLOTTER") || d.getId() == 3L);
-
-        boolean hasCreatePerm = officer.getCustomPermissions().stream()
-                .anyMatch(p -> p.getPermissionName().equalsIgnoreCase("Manage Hearings & Mediation"));
-
-        if (!isBlotterDept || !hasCreatePerm) {
-            throw new RuntimeException("Unauthorized: Access denied. User must be in the Blotter Department with 'Create Records' permission..");
-        }
-    }
 
     private void logNoteActivity(User officer, BlotterCase bc, String note, String ip) {
         try {

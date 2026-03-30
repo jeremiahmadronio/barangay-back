@@ -46,6 +46,5 @@ public class HearingMinutes {
     @Column(updatable = false   , nullable = false)
     private LocalDateTime createdAt;
 
-    @UpdateTimestamp
-    private LocalDateTime updatedAt;
+
 }

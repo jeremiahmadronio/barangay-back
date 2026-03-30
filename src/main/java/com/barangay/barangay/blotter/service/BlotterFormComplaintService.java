@@ -85,11 +85,16 @@ public class BlotterFormComplaintService {
         blotter.setCertifiedAt(LocalDateTime.now());
         blotterRepository.save(blotter);
 
-        // 5. LINK ROLES (Complainant & Respondent)
         Complainant complainant = new Complainant();
         complainant.setBlotterCase(blotter);
         complainant.setPerson(complainantPerson);
         complainantRepository.save(complainant);
+
+        Narrative narrative = new Narrative();
+        narrative.setBlotterCase(blotter);
+        narrative.setStatement(dto.narrativeStatement());
+        narrative.setCreatedAt(LocalDateTime.now());
+        narrativeRepository.save(narrative);
 
         Respondent rLink = new Respondent();
         rLink.setBlotterCase(blotter);
@@ -193,6 +198,13 @@ public class BlotterFormComplaintService {
                 dto.respondentGender(),
                 dto.respondentDob() // Respondent DOB is important for identification
         );
+
+        Narrative narative = new Narrative();
+        narative.setBlotterCase(blotter);
+        narative.setStatement(dto.narrativeStatement());
+        narative.setCreatedAt(LocalDateTime.now());
+        narrativeRepository.save(narative);
+
 
         // 7. SAVE RESPONDENT DETAILS
         Respondent rLink = new Respondent();
@@ -368,6 +380,7 @@ public class BlotterFormComplaintService {
 
         // 7. SAVE RESPONDENT LINK
         People respondentPerson = getRespondentPerson(dto);
+        respondentPerson.setBirthDate(dto.respondentDob());
         peopleRepository.save(respondentPerson);
 
         Respondent rLink = new Respondent();
@@ -379,7 +392,7 @@ public class BlotterFormComplaintService {
                     newType.setName(dto.relationshipTypeName().trim());
                     return relationshipTypeRepository.save(newType);
                 });
-        rLink.setDateOfBirth(dto.respondentDob());
+
         rLink.setAlias(dto.respondentAlias());
         rLink.setRelationshipType(relType);
         respondentRepository.save(rLink);

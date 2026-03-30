@@ -232,8 +232,8 @@ public class BlotterServiceViewOnly {
         List<CaseHandleByDTO> luponManagement = pangkatCompositionRepository.findByBlotterCaseId(bc.getId())
                 .stream()
                 .map(p -> new CaseHandleByDTO(
-                        p.getFirstName(),
-                        p.getLastName(),
+                        p.getEmployee().getPerson().getFirstName(),
+                        p.getEmployee().getPerson().getLastName(),
                         p.getPosition()
                 )).toList();
 
@@ -267,9 +267,9 @@ public class BlotterServiceViewOnly {
                 (bc.getRespondent().getPerson().getContactNumber() != null) ? bc.getRespondent().getPerson().getContactNumber() : "N/A",
                 (bc.getRespondent().getPerson().getAge() != null) ? bc.getRespondent().getPerson().getAge().intValue() : 0,
                 bc.getRespondent().getPerson().getGender(),
-                bc.getRespondent().getDateOfBirth(), // LocalDate can be null
+                bc.getRespondent().getPerson().getBirthDate(), // LocalDate can be null
                 bc.getRespondent().getPerson().getCivilStatus(),
-                bc.getRespondent().getOccupation(),
+                bc.getRespondent().getPerson().getOccupation(),
                 (bc.getRespondent().getRelationshipType() != null) ? bc.getRespondent().getRelationshipType().getName() : "Others/Unknown",
                 (bc.getRespondent().getPerson().getCompleteAddress() != null) ? bc.getRespondent().getPerson().getCompleteAddress() : "N/A",
                 (bc.getRespondent().getLivingWithComplainant() != null) ? bc.getRespondent().getLivingWithComplainant() : false,

@@ -83,7 +83,7 @@ public class BlotterController {
             @RequestParam(required = false) Long natureId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end,
-            @PageableDefault(size = 10, sort = "dateFiled", direction = Sort.Direction.DESC) Pageable pageable) {
+            @PageableDefault(size = 5, sort = "dateFiled", direction = Sort.Direction.DESC) Pageable pageable) {
 
         return ResponseEntity.ok(
                 blotterServiceViewOnly.docketTable(

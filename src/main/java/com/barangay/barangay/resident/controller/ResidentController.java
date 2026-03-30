@@ -3,6 +3,7 @@ package com.barangay.barangay.resident.controller;
 import com.barangay.barangay.audit.service.IpAddressUtils;
 import com.barangay.barangay.resident.dto.*;
 import com.barangay.barangay.resident.model.Resident;
+import com.barangay.barangay.resident.service.EmployeeService;
 import com.barangay.barangay.resident.service.ResidentService;
 import com.barangay.barangay.security.CustomUserDetails;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,6 +23,7 @@ import java.util.List;
 public class ResidentController {
 
     private final ResidentService residentService;
+    private final EmployeeService employeeService;
 
 
 
@@ -65,6 +67,11 @@ public class ResidentController {
             @RequestParam(required = false) Boolean isVoter,
             @RequestParam(required = false) String household) {
         return ResponseEntity.ok(residentService.getResidentTable(search, gender, isVoter, household));
+    }
+
+    @GetMapping("/lupon-employee")
+    public ResponseEntity<List<EmployeeResponseDTO>> displayLuponEmployee(){
+        return ResponseEntity.ok(employeeService.getLuponOfficialsPool());
     }
 
 

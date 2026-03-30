@@ -7,8 +7,11 @@ import com.barangay.barangay.blotter.model.EvidenceType;
 import com.barangay.barangay.blotter.repository.*;
 import com.barangay.barangay.department.model.Department;
 import com.barangay.barangay.enumerated.*;
+import com.barangay.barangay.lupon.model.PangkatComposition;
+import com.barangay.barangay.lupon.repository.PangkatCompositionRepository;
 import com.barangay.barangay.permission.model.Permission;
 import com.barangay.barangay.resident.model.*;
+import com.barangay.barangay.resident.repository.EmployeeRepository;
 import com.barangay.barangay.resident.repository.PeopleRepository;
 import com.barangay.barangay.resident.repository.ResidentRepository;
 import com.barangay.barangay.role.model.Role;
@@ -48,11 +51,11 @@ public class DataInitializer implements CommandLineRunner {
     private final IncidentFrequencyRepository incidentFrequencyRepository;
     private final EvidenceTypeRepository evidenceTypeRepository;
 
-    private final BlotterCaseRepository blotterCaseRepository;
-    private final CasteTimeLineRepository caseTimelineRepository;
+    private final PangkatCompositionRepository pangkatCompositionRepository;
 
     private final PeopleRepository peopleRepository;
     private final ResidentRepository residentRepository;
+    private final EmployeeRepository employeeRepository;
 
 
 
@@ -61,9 +64,18 @@ public class DataInitializer implements CommandLineRunner {
     @Transactional
     public void run(String... args) {
 
+
+
         if (residentRepository.count() == 0) {
             seedResidents(100);
         }
+        seedLuponPool();
+        seedLuponEmployees();
+
+
+
+
+
 
 
         // ── Departments ──────────────────────────────────────────────────────
@@ -208,7 +220,6 @@ public class DataInitializer implements CommandLineRunner {
             seedLogs(rootUser, Departments.FTJS,      "FTJS",       98);
             seedLogs(rootUser, Departments.CLEARANCE, "CLEARANCE", 312);
 
-            // FIX: Added .department() — column is nullable = false, this would crash before
             List<AuditLog> criticalLogs = new ArrayList<>();
             for (int i = 0; i < 3; i++) {
                 criticalLogs.add(AuditLog.builder()
@@ -232,6 +243,106 @@ public class DataInitializer implements CommandLineRunner {
     }
 
 
+
+    private void seedLuponPool() {
+        List<String[]> luponMembers = Arrays.asList(
+                new String[]{"Bernardino", "Roberto"},
+                new String[]{"Palmario", "Ernesto"},
+                new String[]{"Perez", "Exequil"},
+                new String[]{"Gameno", "Victorino"},
+                new String[]{"Babina", "Serafin"},
+                new String[]{"Magdato", "Misias"},
+                new String[]{"Rivero", "Narciso"},
+                new String[]{"Dela Cruz", "Ramon"},
+                new String[]{"Acuna", "Enrique"},
+                new String[]{"Batimana", "Jimmy"},
+                new String[]{"Stana", "Reynaldo"},
+                new String[]{"Borromeo", "Teodoro"}
+        );
+
+        System.out.println("Seeding Lupon Official Pool...");
+
+        for (String[] name : luponMembers) {
+            String lastName = name[0];
+            String firstName = name[1];
+
+            if (!peopleRepository.existsByFirstNameAndLastName(firstName, lastName)) {
+                People p = new People();
+                p.setFirstName(firstName);
+                p.setLastName(lastName);
+                p.setGender("Male");
+                p.setCivilStatus("Married");
+                p.setIsResident(true);
+                p.setCompleteAddress("3s Katipunan Brgy Ugong Valenzuela City  ");
+                p.setContactNumber("09" + (100000000 + new Random().nextInt(900000000)));
+
+                // I-save sa People table
+                People savedPerson = peopleRepository.save(p);
+
+                Resident r = new Resident();
+                r.setPerson(savedPerson);
+                r.setBarangayIdNumber("LUPON-" + UUID.randomUUID().toString().substring(0, 5).toUpperCase());
+                r.setOccupation("Barangay Official");
+                r.setCitizenship("Filipino");
+                residentRepository.save(r);
+            }
+        }
+        System.out.println("Lupon Official Pool seeded successfully.");
+    }
+
+    private void seedLuponEmployees() {
+
+        Department luponDept = departmentRepository.findByName("LUPONG_TAGAPAMAYAPA")
+                .orElseThrow(() -> new RuntimeException("Department 'Lupong Tagapamayapa' not found. Run dept seeding first!"));
+
+        // 2. Master List ng mga Lupon Officials (Base sa screenshots mo)
+        List<String[]> luponStaff = Arrays.asList(
+                new String[]{"Bernardino", "Roberto", "Chairman"},
+                new String[]{"Palmario", "Ernesto", "Chairman"},
+                new String[]{"Perez", "Exequil", "Secretary"},
+                new String[]{"Gameno", "Victorino", "Member"},
+                new String[]{"Babina", "Serafin", "Member"},
+                new String[]{"Magdato", "Misias", "Member"},
+                new String[]{"Rivero", "Narciso", "Member"},
+                new String[]{"Dela Cruz", "Ramon", "Member"},
+                new String[]{"Acuna", "Enrique", "Member"},
+                new String[]{"Batimana", "Jimmy", "Member"},
+                new String[]{"Stana", "Reynaldo", "Member"},
+                new String[]{"Borromeo", "Teodoro", "Member"}
+        );
+
+        System.out.println("Seeding Lupon Employees into Master Pool...");
+
+        for (String[] data : luponStaff) {
+            String lastName = data[0];
+            String firstName = data[1];
+            String position = data[2];
+
+            // 3. Hanapin o Gawa ng People record (Identity)
+            People person = peopleRepository.findByFirstNameAndLastName(firstName, lastName)
+                    .orElseGet(() -> {
+                        People p = new People();
+                        p.setFirstName(firstName);
+                        p.setLastName(lastName);
+                        p.setIsResident(true);
+                        p.setCompleteAddress("Brgy. Ugong, Valenzuela City");
+                        p.setGender("Male");
+                        return peopleRepository.save(p);
+                    });
+
+            // 4. DITO ANG IMPORTANTE: Link the Person to the Employee Table
+            if (employeeRepository.findByPersonId(person.getId()).isEmpty()) {
+                Employee emp = new Employee();
+                emp.setPerson(person); // Link to identity
+                emp.setDepartment(luponDept); // Link to Lupon Dept
+                emp.setPosition(position); // E.g., "Chairman"
+                emp.setIsActive(true);
+
+                employeeRepository.save(emp);
+                System.out.println("[EMPLOYEE SEEDED] " + firstName + " " + lastName + " as " + position);
+            }
+        }
+    }
 
 
 

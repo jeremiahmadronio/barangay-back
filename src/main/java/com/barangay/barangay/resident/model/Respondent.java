@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -35,11 +36,7 @@ public class Respondent {
     @Column(length = 100)
     private String alias;
 
-    @Column(length = 100)
-    private String occupation;
 
-    @Column
-    private LocalDate dateOfBirth;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "relationship_type_id")
@@ -53,4 +50,7 @@ public class Respondent {
     @CreationTimestamp
     @Column(updatable = false, nullable = false)
     private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    private LocalDateTime updatedAt;
 }

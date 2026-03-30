@@ -36,19 +36,25 @@ public class HearingService {
 
     @Transactional
     public void scheduleNewHearing(ScheduleHearingRequest dto, User officer, String ipAddress) {
+        // 1. Fetch Officer and Validate Access
         User managedOfficer = userManagementRepository.findByIdWithDepartments(officer.getId())
                 .orElseThrow(() -> new RuntimeException("Officer session invalid."));
         validateOfficerAccess(managedOfficer);
 
+        // 2. Fetch Case
         BlotterCase blotterCase = blotterCaseRepository.findByBlotterNumber(dto.blotterNumber())
                 .orElseThrow(() -> new RuntimeException("Case not found: " + dto.blotterNumber()));
+
+        boolean isLupon = blotterCase.getDepartment() != null &&
+                "LUPONG_TAGAPAMAYAPA".equalsIgnoreCase(blotterCase.getDepartment().getName());
+        String stageLabel = isLupon ? "Conciliation" : "Mediation";
 
         if (!dto.scheduledEnd().isAfter(dto.scheduledStart())) {
             throw new RuntimeException("Invalid schedule: End time must be after start time.");
         }
 
-        if (hearingRepository.existsActiveLuponOverlapping(dto.venue(), dto.scheduledStart(), dto.scheduledEnd())) {
-            throw new RuntimeException("Conflict: The venue '" + dto.venue() + "' is occupied by an active/scheduled hearing.");
+        if (hearingRepository.existsActiveConflict(dto.venue(), dto.scheduledStart(), dto.scheduledEnd())) {
+            throw new RuntimeException("Conflict: The venue '" + dto.venue() + "' has an existing SCHEDULED session at this time.");
         }
 
         Short nextSummon = (short) (hearingRepository.findLastSummonNumber(blotterCase.getId()) + 1);
@@ -74,26 +80,24 @@ public class HearingService {
         CaseTimeline timeline = new CaseTimeline();
         timeline.setBlotterCase(blotterCase);
         timeline.setEventType(TimelineEventType.SUMMON_ISSUED);
-        timeline.setTitle("Mediation " + hearing.getSummonNumber() + " Issued");
-        timeline.setDescription("Mediation scheduled on " + hearing.getScheduledStart().toLocalDate() +
-                " at " + hearing.getVenue());
+        timeline.setTitle(stageLabel + " #" + hearing.getSummonNumber() + " Issued");
+        timeline.setDescription(stageLabel + " session scheduled on " +
+                hearing.getScheduledStart().toLocalDate() + " at " + hearing.getVenue());
         timeline.setPerformedBy(managedOfficer);
         caseTimeLineRepository.save(timeline);
 
-        // 9. Audit Logging (Including Old and New Status of the Case)
         auditLogService.log(
                 managedOfficer,
-                Departments.LUPONG_TAGAPAMAYAPA,
-                "SCHEDULE_NEW_MEDIATION",
+                isLupon ? Departments.LUPONG_TAGAPAMAYAPA : Departments.BLOTTER,
+                "SCHEDULE_NEW_" + stageLabel.toUpperCase(),
                 Severity.INFO,
-                "Scheduled Mediation #" + hearing.getSummonNumber() + " for Case " + blotterCase.getBlotterNumber(),
+                "Scheduled " + stageLabel + " #" + hearing.getSummonNumber() + " for Case " + blotterCase.getBlotterNumber(),
                 ipAddress,
                 "Venue: " + hearing.getVenue(),
-                "CaseStatus: " + oldStatus,
-                "CaseStatus: " + newStatus
+                "Old Case Status: " + oldStatus,
+                "New Case Status: " + newStatus
         );
     }
-
 
 
 

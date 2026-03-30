@@ -9,6 +9,7 @@ import com.barangay.barangay.lupon.dto.dashboard.RecentCaseDTO;
 import com.barangay.barangay.lupon.dto.reports.NatureReportDTO;
 import com.barangay.barangay.lupon.dto.reports.ReportsStatsDTO;
 import com.barangay.barangay.lupon.dto.reports.StatusStatDTO;
+import com.barangay.barangay.lupon.model.PangkatCFA;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -23,6 +24,8 @@ import java.util.Optional;
 
 @Repository
 public interface CaseRepository extends JpaRepository<BlotterCase,Long> {
+
+
 
 
     @Query("""
@@ -210,6 +213,8 @@ public interface CaseRepository extends JpaRepository<BlotterCase,Long> {
             @Param("endDate") LocalDateTime endDate,
             Pageable pageable
     );
+
+
 
 
 

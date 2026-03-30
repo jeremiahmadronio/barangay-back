@@ -1,8 +1,10 @@
 package com.barangay.barangay.lupon.controller;
 
-import com.barangay.barangay.admin_management.model.User;
 import com.barangay.barangay.audit.service.IpAddressUtils;
+import com.barangay.barangay.lupon.dto.CFA.CFARequest;
 import com.barangay.barangay.lupon.dto.*;
+import com.barangay.barangay.lupon.dto.CFA.CFAResponse;
+import com.barangay.barangay.lupon.service.PangkatCFAService;
 import com.barangay.barangay.lupon.service.PangkatService;
 import com.barangay.barangay.security.CustomUserDetails;
 import jakarta.servlet.http.HttpServletRequest;
@@ -10,10 +12,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -24,6 +24,7 @@ import java.time.LocalDate;
 public class PangkatController {
 
     private final PangkatService pangkatService;
+    private final PangkatCFAService cfaService;
 
 
 
@@ -34,7 +35,7 @@ public class PangkatController {
 
     @PatchMapping("/refer-to-lupon/{blotterNumber}")
     public ResponseEntity<?> referToLupon(
-            @PathVariable String blotterNumber, // Changed from Long caseId to String
+            @PathVariable String blotterNumber,
             @Valid @RequestBody ReferToLuponRequest referToLuponRequest,
             @AuthenticationPrincipal CustomUserDetails userDetails,
             HttpServletRequest httpServletRequest
@@ -131,6 +132,33 @@ public class PangkatController {
         return ResponseEntity.ok(details);
 
 
+    }
+
+
+    @GetMapping("/hearing-minutes-view/{hearingId}")
+    public ResponseEntity<HearingMinutesViewingDTO> getHearingMinutes(@PathVariable Long hearingId) {
+        HearingMinutesViewingDTO data = pangkatService.getHearingMinutesInfo(hearingId);
+        return ResponseEntity.ok(data);
+    }
+
+
+    @PostMapping("/issue")
+    public ResponseEntity<String> issueCfa(
+            @Valid @RequestBody CFARequest request,
+            @AuthenticationPrincipal CustomUserDetails currentUser,
+            HttpServletRequest httpRequest
+    ) {
+        String ipAddress = IpAddressUtils.getClientIp(httpRequest);
+
+        cfaService.issueCfa(request, currentUser.user(), ipAddress);
+
+        return ResponseEntity.ok("Success: Certificate to File Action (CFA) has been issued.");
+    }
+
+
+    @GetMapping("/cfa-display/{blotterNumber}")
+    public ResponseEntity<CFAResponse> getCfaDetails(@PathVariable String blotterNumber){
+        return ResponseEntity.ok(cfaService.getCfaDetails(blotterNumber));
     }
 
 

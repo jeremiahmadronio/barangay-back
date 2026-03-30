@@ -78,9 +78,9 @@ public class PangkatViewingService {
                     p != null ? p.getContactNumber() : null,
                     p != null && p.getAge() != null ? p.getAge().intValue() : null,
                     p != null ? p.getGender() : null,
-                    r.getDateOfBirth(),
+                    p != null ? p.getBirthDate() : null,
                     p != null ? p.getCivilStatus() : null,
-                    r.getOccupation(),
+                    p != null ? p.getOccupation() : null,
                     r.getRelationshipType() != null ? r.getRelationshipType().getName() : null,
                     p != null ? p.getCompleteAddress() : null,
                     r.getLivingWithComplainant() != null ? r.getLivingWithComplainant() : false
@@ -105,13 +105,12 @@ public class PangkatViewingService {
         List<LuponCaseMemberHandlerDTO> memberDTOs = pangkat.stream()
                 .map(p -> new LuponCaseMemberHandlerDTO(
                         p.getId(),
-                        p.getFirstName(),
-                        p.getLastName(),
+                        p.getEmployee().getPerson().getFirstName(),
+                        p.getEmployee().getPerson().getLastName(),
                         p.getPosition()
                 ))
                 .collect(Collectors.toList());
 
-        // Map Evidences (Extracting the Type Name)
         List<String> evidenceNames = evidences.stream()
                 .map(e -> e.getType().getTypeName())
                 .collect(Collectors.toList());
@@ -134,6 +133,11 @@ public class PangkatViewingService {
                     );
                 }).collect(Collectors.toList());
 
+        String narrativeStr = null;
+        if (bCase.getNarrativeStatement() != null) {
+            narrativeStr = bCase.getNarrativeStatement().getStatement();
+        }
+
         // Build Final Root DTO
         return new LuponViewDTO(
                 bCase.getId(),
@@ -151,7 +155,7 @@ public class PangkatViewingService {
                 complainantDTO,
                 respondentDTO,
                 incidentDTO,
-                bCase.getNarrativeStatement() != null ? bCase.getNarrativeStatement().getStatement() : null,
+                narrativeStr,
                 evidenceNames,
                 witnessDTOs,
                 memberDTOs

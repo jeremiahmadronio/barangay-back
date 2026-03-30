@@ -4,6 +4,7 @@ import com.barangay.barangay.admin_management.model.User;
 import com.barangay.barangay.department.model.Department;
 import com.barangay.barangay.enumerated.CaseStatus;
 import com.barangay.barangay.enumerated.CaseType;
+import com.barangay.barangay.lupon.model.PangkatCFA;
 import com.barangay.barangay.resident.model.Complainant;
 import com.barangay.barangay.resident.model.Respondent;
 import com.barangay.barangay.resident.model.Witness;
@@ -112,6 +113,9 @@ public class BlotterCase {
 
     @OneToOne(mappedBy = "blotterCase", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Narrative narrativeStatement;
+
+    @OneToOne(mappedBy = "blotterCase", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private PangkatCFA pangkatCfa;
 
 
 

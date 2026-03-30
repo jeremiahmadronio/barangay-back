@@ -32,6 +32,13 @@ public interface HearingRepository extends JpaRepository<Hearing, Long> {
             @Param("end") LocalDateTime end
     );
 
+    @Query("SELECT COUNT(h) > 0 FROM Hearing h WHERE h.venue = :venue " +
+            "AND h.status = 'SCHEDULED' " + // Dito ang logic: SCHEDULED lang ang nakaka-block
+            "AND ((h.scheduledStart < :end AND h.scheduledEnd > :start))")
+    boolean existsActiveConflict(@Param("venue") String venue,
+                                 @Param("start") LocalDateTime start,
+                                 @Param("end") LocalDateTime end);
+
     // Get the next summon number for a specific case
     @Query("SELECT COALESCE(MAX(h.summonNumber), 0) FROM Hearing h WHERE h.blotterCase.id = :caseId")
     Short findLastSummonNumber(@Param("caseId") Long caseId);

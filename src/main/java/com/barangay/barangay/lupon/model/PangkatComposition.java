@@ -1,6 +1,8 @@
 package com.barangay.barangay.lupon.model;
 
 import com.barangay.barangay.blotter.model.BlotterCase;
+import com.barangay.barangay.resident.model.Employee;
+import com.barangay.barangay.resident.model.People;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -22,15 +24,14 @@ public class PangkatComposition {
     @JoinColumn(name = "case_id", nullable = false)
     private BlotterCase blotterCase;
 
-    @Column(length = 100, nullable = false)
-    private String firstName;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "employee_id", nullable = false)
+    private Employee employee;
 
-    @Column(length = 100, nullable = false)
-    private String lastName;
+
 
     @Column(length = 100, nullable = false)
     private String position;
-    // "Pangkat Chairman etc"
 
 
     @CreationTimestamp

@@ -61,10 +61,15 @@ public class User {
     private LocalDateTime lastLoginAt;
 
 
-    //role connection
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "role_id")
     private Role role;
+
+    @Column(name = "mfa_code")
+    private String mfaCode;
+
+    @Column(name = "mfa_expiry")
+    private LocalDateTime mfaExpiry;
 
     //department connection
     @ManyToMany(fetch = FetchType.EAGER)
@@ -87,11 +92,7 @@ public class User {
 
 
 
-    @Column(name = "mfa_code")
-    private String mfaCode;
 
-    @Column(name = "mfa_expiry")
-    private LocalDateTime mfaExpiry;
 
 
 

@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface PeopleRepository extends JpaRepository<People, Long> {
@@ -23,4 +24,8 @@ public interface PeopleRepository extends JpaRepository<People, Long> {
             "OR LOWER(r.barangayIdNumber) LIKE LOWER(concat('%', :query, '%'))" +
             ")")
     List<PersonSearchResponseDTO> searchPeopleForBlotter(@Param("query") String query);
+
+    boolean existsByFirstNameAndLastName (String firstName, String lastName);
+
+    Optional<People> findByFirstNameAndLastName (String firstName, String lastName);
 }

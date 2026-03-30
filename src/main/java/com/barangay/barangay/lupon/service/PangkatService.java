@@ -19,6 +19,10 @@ import com.barangay.barangay.lupon.repository.CaseRepository;
 import com.barangay.barangay.lupon.repository.PangkatAttendanceRepository;
 import com.barangay.barangay.lupon.repository.PangkatCompositionRepository;
 import com.barangay.barangay.lupon.repository.PangkatHearingRepository;
+import com.barangay.barangay.resident.model.Employee;
+import com.barangay.barangay.resident.model.People;
+import com.barangay.barangay.resident.repository.EmployeeRepository;
+import com.barangay.barangay.resident.repository.PeopleRepository;
 import com.barangay.barangay.user_management.repository.UserManagementRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
@@ -33,10 +37,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -52,6 +53,8 @@ public class PangkatService {
     private final PangkatHearingRepository hearingRepository;
     private final CasteTimeLineRepository caseTimeLineRepository;
     private final HearingMinutesRepository hearingMinutesRepository;
+    private final PeopleRepository peopleRepository;
+    private final EmployeeRepository employeeRepository;
 
 
 
@@ -84,47 +87,59 @@ public class PangkatService {
 
     @Transactional
     public void processLuponReferral(String blotterNumber, ReferToLuponRequest request, User actor, String ipAddress) {
-        BlotterCase blotterCase = blotterCaseRepository.findByBlotterNumber(blotterNumber)
-                .orElseThrow(() -> new RuntimeException("Case not found: " + blotterNumber));
+        // 1. Define 'now' para hindi mag-error (Dito ka nadale kanina)
+        LocalDateTime now = LocalDateTime.now();
 
+        // 2. Fetch the Case
+        BlotterCase blotterCase = blotterCaseRepository.findByBlotterNumber(blotterNumber)
+                .orElseThrow(() -> new EntityNotFoundException("Case not found: " + blotterNumber));
+
+        // 3. Fetch Lupon Department
         Department luponDept = departmentRepository.findByNameIgnoreCase("LUPONG_TAGAPAMAYAPA")
                 .orElseThrow(() -> new RuntimeException("Department 'Lupong Tagapamayapa' not found."));
 
-
+        // 4. Cancel Active Hearings (Cleaning up previous department's schedule)
         List<Hearing> activeHearings = hearingRepository.findAllByBlotterCaseBlotterNumberAndStatus(
                 blotterNumber, HearingStatus.SCHEDULED);
 
         if (!activeHearings.isEmpty()) {
             activeHearings.forEach(h -> {
                 h.setStatus(HearingStatus.CANCELLED);
-
+                h.setNotes("System: Automatically cancelled due to Lupon escalation.");
             });
             hearingRepository.saveAll(activeHearings);
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        // 5. Update Case Status & Set 15-day Deadline
         blotterCase.setDepartment(luponDept);
         blotterCase.setStatus(CaseStatus.UNDER_CONCILIATION);
         blotterCase.setReferredToLuponAt(now);
-        blotterCase.setLuponDeadline(now.plusDays(15));
-        blotterCase.setStatusRemarks("Case refer to lupon");
+        blotterCase.setLuponDeadline(now.plusDays(15)); // Reset timer for Lupon
+        blotterCase.setStatusRemarks("Case referred to Lupon for formal conciliation.");
 
-        if (request.members() == null || request.members().isEmpty()) {
-            throw new RuntimeException("Pangkat members are required for referral.");
+        blotterCaseRepository.save(blotterCase);
+
+        // 6. Save Pangkat Composition (Linking to Employees)
+        if (request.members() == null || request.members().size() != 3) {
+            throw new IllegalArgumentException("Exactly 3 Pangkat members (Chairman, Secretary, Member) are required.");
         }
 
         List<PangkatComposition> pangkat = request.members().stream().map(dto -> {
             PangkatComposition member = new PangkatComposition();
             member.setBlotterCase(blotterCase);
-            member.setFirstName(dto.firstName());
-            member.setLastName(dto.lastName());
-            member.setPosition(dto.position());
+
+            Employee emp = employeeRepository.findById(dto.employeeId())
+                    .orElseThrow(() -> new EntityNotFoundException("Employee not found with ID: " + dto.employeeId()));
+
+            member.setEmployee(emp); // Naka-link na sa Master Pool
+            member.setPosition(dto.position()); // "Chairman", "Secretary", etc.
+
             return member;
         }).collect(Collectors.toList());
 
         pangkatCompositionRepository.saveAll(pangkat);
 
-        // 5. Audit Logging
+        // 7. Audit Logging
         auditLogService.log(
                 actor,
                 Departments.LUPONG_TAGAPAMAYAPA,
@@ -383,7 +398,7 @@ public class PangkatService {
                 .stream()
                 .map(p -> new AssignedPangkatDTO(
                         p.getId(),
-                        p.getFirstName() + " " + p.getLastName(),
+                        p.getEmployee().getPerson().getFirstName() + " " + p.getEmployee().getPerson().getLastName(),
                         p.getPosition()
                 )).toList();
 
@@ -401,6 +416,62 @@ public class PangkatService {
                 bc.getBlotterNumber(),
                 bc.getComplainant().getPerson().getFirstName() + " vs " + bc.getRespondent().getPerson().getFirstName(),
                 assignedPangkat
+        );
+    }
+
+
+
+
+    @Transactional(readOnly = true)
+    public HearingMinutesViewingDTO getHearingMinutesInfo(Long hearingId) {
+
+        Hearing h = hearingRepository.findById(hearingId)
+                .orElseThrow(() -> new EntityNotFoundException("Hearing not found with ID: " + hearingId));
+
+        BlotterCase bc = h.getBlotterCase();
+
+        HearingMinutes minutes = hearingMinutesRepository.findByHearingId(hearingId)
+                .orElseThrow(() -> new EntityNotFoundException("Minutes not yet recorded for this hearing."));
+
+        List<PangkatAttendance> attendanceList = pangkatAttendanceRepository.findByHearingId(hearingId);
+
+        boolean chairmanPresent = attendanceList.stream()
+                .anyMatch(a -> "Chairman".equalsIgnoreCase(a.getPangkatMember().getPosition()) && a.getIsPresent());
+
+        boolean secretaryPresent = attendanceList.stream()
+                .anyMatch(a -> "Secretary".equalsIgnoreCase(a.getPangkatMember().getPosition()) && a.getIsPresent());
+
+        boolean memberPresent = attendanceList.stream()
+                .anyMatch(a -> "Member".equalsIgnoreCase(a.getPangkatMember().getPosition()) && a.getIsPresent());
+
+        List<FollowUpSummaryDTO> followUpNotes = h.getFollowUps().stream()
+                .map(f -> new FollowUpSummaryDTO(
+                        f.getId(),
+                        f.getRemarks(),
+                        f.getRecordedBy() != null ?
+                                f.getRecordedBy().getFirstName() + " " + f.getRecordedBy().getLastName() : "System",
+                        f.getCreatedAt()
+                )).collect(Collectors.toList());
+
+
+        return new HearingMinutesViewingDTO(
+                h.getId(),
+                h.getSummonNumber().longValue(),
+                h.getStatus(),
+                h.getScheduledStart(),
+                h.getVenue(),
+                minutes.getComplainantPresent(),
+                minutes.getRespondentPresent(),
+                chairmanPresent,
+                secretaryPresent,
+                memberPresent,
+                bc.getNarrativeStatement() != null ? bc.getNarrativeStatement().getStatement() : "No narrative",
+                minutes.getOutcome() != null ? minutes.getOutcome().name() : "PENDING",
+
+                minutes.getRecordedBy() != null ?
+                        minutes.getRecordedBy().getFirstName() + " " + minutes.getRecordedBy().getLastName() : "Unknown",
+
+                followUpNotes
         );
     }
 
