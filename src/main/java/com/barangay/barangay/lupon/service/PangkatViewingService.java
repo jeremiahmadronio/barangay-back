@@ -50,8 +50,8 @@ public class PangkatViewingService {
     private LuponViewDTO mapToLuponViewDTO(BlotterCase bCase, List<PangkatComposition> pangkat, List<EvidenceRecord> evidences) {
 
         long daysRemaining = 0;
-        if (bCase.getLuponDeadline() != null) {
-            daysRemaining = ChronoUnit.DAYS.between(LocalDateTime.now(), bCase.getLuponDeadline());
+        if (bCase.getLuponReferral().getDeadline() != null) {
+            daysRemaining = ChronoUnit.DAYS.between(LocalDateTime.now(), bCase.getLuponReferral().getDeadline());
         }
 
         // Map Complainant Details (Null-safe)
@@ -81,7 +81,7 @@ public class PangkatViewingService {
                     p != null ? p.getBirthDate() : null,
                     p != null ? p.getCivilStatus() : null,
                     p != null ? p.getOccupation() : null,
-                    r.getRelationshipType() != null ? r.getRelationshipType().getName() : null,
+                    r.getRelationshipToComplainant(),
                     p != null ? p.getCompleteAddress() : null,
                     r.getLivingWithComplainant() != null ? r.getLivingWithComplainant() : false
             );
@@ -92,11 +92,11 @@ public class PangkatViewingService {
         if (bCase.getIncidentDetail() != null) {
             var i = bCase.getIncidentDetail();
             incidentDTO = new LuponViewDTO.IncidentDetailDTO(
-                    i.getNatureOfComplaint() != null ? i.getNatureOfComplaint().getName() : null,
+                    i.getNatureOfComplaint() != null ? i.getNatureOfComplaint() : null,
                     i.getDateOfIncident(),
                     i.getTimeOfIncident(),
                     i.getPlaceOfIncident(),
-                    i.getFrequency() != null ? i.getFrequency().getLabel() : null,
+                    i.getFrequency() != null ? i.getFrequency() : null,
                     i.getInjuriesDamagesDescription()
             );
         }
@@ -107,7 +107,7 @@ public class PangkatViewingService {
                         p.getId(),
                         p.getEmployee().getPerson().getFirstName(),
                         p.getEmployee().getPerson().getLastName(),
-                        p.getPosition()
+                        p.getEmployee().getPosition()
                 ))
                 .collect(Collectors.toList());
 
@@ -146,11 +146,11 @@ public class PangkatViewingService {
                 bCase.getStatus(),
                 bCase.getStatusRemarks(),
                 bCase.getDateFiled(),
-                bCase.getReferredToLuponAt(),
-                bCase.getReceivingOfficer() != null ? bCase.getReceivingOfficer().getUsername() : null, // Assuming User has username
+                bCase.getLuponReferral().getReferredAt(),
+                bCase.getCreatedBy() != null ? bCase.getCreatedBy().getUsername() : null, // Assuming User has username
                 new LuponViewDTO.MediationInfoDTO(
-                        bCase.getLuponDeadline(), daysRemaining, bCase.getExtensionCount(),
-                        bCase.getExtensionDate(), bCase.getExtensionReason(), bCase.getSettlementTerms()
+                        bCase.getLuponReferral().getDeadline(), daysRemaining, bCase.getLuponReferral().getExtensionCount(),
+                        bCase.getLuponReferral().getExtensionAt(), bCase.getLuponReferral().getExtensionReason(), bCase.getSettlementTerms()
                 ),
                 complainantDTO,
                 respondentDTO,

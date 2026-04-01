@@ -3,6 +3,7 @@ package com.barangay.barangay.admin_management.model;
 
 import com.barangay.barangay.department.model.Department;
 import com.barangay.barangay.permission.model.Permission;
+import com.barangay.barangay.person.model.Person;
 import com.barangay.barangay.role.model.Role;
 import com.barangay.barangay.enumerated.Status;
 import jakarta.persistence.*;
@@ -28,19 +29,16 @@ public class User {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    //basic column
+    @OneToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "person_id", referencedColumnName = "id", unique = true)
+    private Person person;
+
     @Column(unique = true)
     private String username;
     @Column(nullable = false)
     private String password;
     @Column(unique = true, columnDefinition = "TEXT")
-    private String email;
-    @Column(length = 100, nullable = false , columnDefinition = "TEXT")
-    private String firstName;
-    @Column(length = 100, nullable = false , columnDefinition = "TEXT")
-    private String lastName;
-    @Column(length = 15)
-    private String contactNumber;
+    private String systemEmail;
     @Column
     private Integer failedAttempts;
     @Enumerated(EnumType.STRING)
@@ -49,7 +47,6 @@ public class User {
     @Column
     private Boolean isLocked = false;
 
-    //date related
     @Column
     private LocalDateTime lockUntil;
     @CreationTimestamp
@@ -71,7 +68,8 @@ public class User {
     @Column(name = "mfa_expiry")
     private LocalDateTime mfaExpiry;
 
-    //department connection
+
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "user_departments",
@@ -79,7 +77,6 @@ public class User {
             inverseJoinColumns = @JoinColumn(name = "department_id")
     )
     private Set<Department> allowedDepartments = new HashSet<>();
-
 
 
     @ManyToMany(fetch = FetchType.EAGER)

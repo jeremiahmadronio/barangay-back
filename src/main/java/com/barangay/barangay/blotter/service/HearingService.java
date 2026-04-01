@@ -8,6 +8,7 @@ import com.barangay.barangay.blotter.repository.*;
 import com.barangay.barangay.enumerated.*;
 import com.barangay.barangay.user_management.repository.UserManagementRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,7 +20,7 @@ import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
-public class HearingService {
+public class    HearingService {
 
     private final HearingRepository hearingRepository;
     private final BlotterCaseRepository blotterCaseRepository;
@@ -135,7 +136,7 @@ public class HearingService {
             snapshot.put("Case Number", bc.getBlotterNumber());
             snapshot.put("Mediation Number", "Mediation #" + h.getSummonNumber());
             snapshot.put("Remarks", dto.notes());
-            snapshot.put("Added By", officer.getFirstName() + " " + officer.getLastName());
+            snapshot.put("Added By", officer.getPerson().getFirstName() + " " + officer.getPerson().getLastName());
 
             String jsonState = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(snapshot);
 
@@ -173,14 +174,14 @@ public class HearingService {
                 minutes.getRespondentPresent(),
                 minutes.getHearingNotes(),
                 minutes.getOutcome(),
-                minutes.getRecordedBy().getFirstName() + " " + minutes.getRecordedBy().getLastName()
+                minutes.getRecordedBy().getPerson().getFirstName() + " " + minutes.getRecordedBy().getPerson().getLastName()
         );
 
         List<FollowUpSummaryDTO> followUps = hearing.getFollowUps().stream()
                 .map(f -> new FollowUpSummaryDTO(
                         f.getId(),
                         f.getRemarks(),
-                        f.getRecordedBy().getFirstName() + " " + f.getRecordedBy().getLastName(),
+                        f.getRecordedBy().getPerson().getFirstName() + " " + f.getRecordedBy().getPerson().getLastName(),
                         f.getCreatedAt()
                 )).toList();
 
@@ -291,7 +292,7 @@ public class HearingService {
             snapshot.put("Mediation Number", "Patawag #" + h.getSummonNumber());
             snapshot.put("Mediation Date", h.getScheduledStart().toLocalDate().toString());
             snapshot.put("Outcome", outcome.toString().replace("_", " "));
-            snapshot.put("Officer In-Charge", officer.getFirstName() + " " + officer.getLastName());
+            snapshot.put("Officer In-Charge", officer.getPerson().getFirstName() + " " + officer.getPerson().getLastName());
 
             String jsonState = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(snapshot);
 
@@ -309,6 +310,59 @@ public class HearingService {
         } catch (Exception e) {
             auditLogService.log(officer, null, "ERROR", Severity.CRITICAL, "LOG_FAIL", ip, "Failed to log minutes: " + e.getMessage(), null, null);
         }
+    }
+
+
+    @Transactional
+    public void updateHearingStatus(Long hearingId, String newStatus, String remarks, User actor, String ipAddress) {
+
+        Hearing hearing = hearingRepository.findById(hearingId)
+                .orElseThrow(() -> new EntityNotFoundException("Mediation not found with ID: " + hearingId));
+
+
+        String oldStatus = hearing.getStatus().name();
+
+        HearingStatus statusEnum;
+        try {
+            statusEnum = HearingStatus.valueOf(newStatus.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid Mediation Status: " + newStatus);
+        }
+
+        if (hearing.getStatus() == HearingStatus.COMPLETED) {
+            throw new IllegalStateException("Cannot update Mediation status is also COMPLETED.");
+        }
+
+        hearing.setStatus(statusEnum);
+
+        HearingFollowUp followUp = new HearingFollowUp();
+        followUp.setHearing(hearing);
+        followUp.setRemarks("STATUS CHANGED TO " + statusEnum.name() + ". Reason: " + remarks);
+
+        hearing.getFollowUps().add(followUp);
+        hearingRepository.save(hearing);
+
+        CaseTimeline timeline = new CaseTimeline();
+        timeline.setBlotterCase(hearing.getBlotterCase());
+        timeline.setEventType(TimelineEventType.HEARING_FOLLOWUP);
+        timeline.setTitle("Mediation " + statusEnum.name());
+        timeline.setDescription("Mediation Session " + hearing.getSummonNumber());
+        timeline.setPerformedBy(actor);
+
+        caseTimeLineRepository.save(timeline);
+
+        String blotterNum = hearing.getBlotterCase().getBlotterNumber();
+        auditLogService.log(
+                actor,
+                Departments.LUPONG_TAGAPAMAYAPA,
+                "MEDIATION MINUTES",
+                Severity.INFO,
+                "Update Mediation Minutes",
+                ipAddress,
+                "Updated Mediation (Summon #" + hearing.getSummonNumber() + ") of Case #" + blotterNum + " to " + statusEnum.name() + ". Reason: " + remarks,
+                oldStatus,
+                statusEnum.name()
+        );
     }
 }
 

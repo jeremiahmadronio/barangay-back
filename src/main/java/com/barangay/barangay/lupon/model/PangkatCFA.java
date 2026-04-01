@@ -24,34 +24,38 @@ public class PangkatCFA {
     private Long id;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "blotter_case_id", nullable = false, unique = true)
+    @JoinColumn(name = "_case_id", nullable = false, unique = true)
     private BlotterCase blotterCase;
 
-    @Column(columnDefinition = "TEXT", nullable = false)
+    @Column(columnDefinition = "TEXT", nullable = false,name = "grounds")
     private String grounds;
 
-    @Column(nullable = false)
+    @Column(nullable = false,name = "subject_of_litigations")
     private String subjectOfLitigation;
 
-    @Column(length = 50, unique = true)
+    @Column(length = 50, unique = true, name = "control_number")
     private String controlNumber;
 
-    @CreationTimestamp
-    @Column(updatable = false)
-    private LocalDateTime issuedAt;
+
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "issued_by_id")
+    @JoinColumn(name = "created_by")
     private User issuedBy;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "updated_by")
+    private User updatedBy;
+
+
+    @CreationTimestamp
+    @Column(updatable = false,name = "created_at")
+    private LocalDateTime issuedAt;
 
     @UpdateTimestamp
-
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "updated_by_id")
-    private User updatedBy;
+
 
 
 

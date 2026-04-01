@@ -1,7 +1,5 @@
 package com.barangay.barangay.blotter.repository;
 
-import com.barangay.barangay.blotter.dto.reports_and_display.NatureStatDTO;
-import com.barangay.barangay.blotter.dto.reports_and_display.StatusStatDTO;
 import com.barangay.barangay.blotter.model.BlotterCase;
 import com.barangay.barangay.department.model.Department;
 import com.barangay.barangay.enumerated.CaseStatus;
@@ -9,6 +7,7 @@ import com.barangay.barangay.enumerated.CaseType;
 
 import com.barangay.barangay.lupon.dto.dashboard.CaseStatusDistributionDTO;
 import com.barangay.barangay.lupon.dto.dashboard.RecentCaseDTO;
+import com.barangay.barangay.person.model.Person;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -17,7 +16,6 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -44,18 +42,26 @@ public interface BlotterCaseRepository extends JpaRepository<BlotterCase, Long>,
 
 
 
-    @Query("SELECT COUNT(bc) FROM BlotterCase bc " +
-            "WHERE bc.referredToLuponAt BETWEEN :start AND :end " +
-            "AND (bc.department.id = :deptId OR :deptId = 3)") // Kung taga-Blotter (3), ipakita lahat ng na-refer
-    long countAllReferredToLupon(@Param("deptId") Long deptId,
-                                 @Param("start") LocalDateTime start,
-                                 @Param("end") LocalDateTime end);
+    @Query("""
+    SELECT COUNT(bc) FROM BlotterCase bc 
+    JOIN bc.luponReferral lr 
+    WHERE lr.referredAt BETWEEN :start AND :end 
+    AND (bc.department.id = :deptId OR :deptId = 3)
+""")
+    long countAllReferredToLupon(
+            @Param("deptId") Long deptId,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
+    );
 
     List<BlotterCase> findAllByStatusAndDepartmentIsNullAndDateFiledBefore(
             CaseStatus status, LocalDateTime threshold);
 
-    List<BlotterCase> findAllByStatusAndDepartmentNameAndLuponDeadlineBefore(
-            CaseStatus status, String deptName, LocalDateTime now);
+    List<BlotterCase> findAllByStatusAndDepartmentNameAndLuponReferral_DeadlineBefore(
+            CaseStatus status,
+            String deptName,
+            LocalDateTime deadline
+    );
 
 
 
@@ -74,12 +80,12 @@ WHERE bc.department.name IN ('BLOTTER', 'LUPONG_TAGAPAMAYAPA')
 
 
     @Query("""
-    SELECT id.natureOfComplaint.name, COUNT(bc)
+    SELECT id.natureOfComplaint, COUNT(bc)
     FROM BlotterCase bc
     JOIN bc.incidentDetail id
     WHERE bc.department.name IN ('BLOTTER', 'LUPONG_TAGAPAMAYAPA')
     AND bc.dateFiled BETWEEN :start AND :end
-    GROUP BY id.natureOfComplaint.name
+    GROUP BY id.natureOfComplaint
     ORDER BY COUNT(bc) DESC
 """)
     List<Object[]> countCasesByNatureFiltered(
@@ -124,23 +130,13 @@ WHERE bc.department.name IN ('BLOTTER', 'LUPONG_TAGAPAMAYAPA')
 
 
 
-    @Query("""
-        SELECT new com.barangay.barangay.blotter.dto.reports_and_display.StatusStatDTO(
-            CAST(bc.status AS string),
-            COUNT(bc)
-        )
-        FROM BlotterCase bc
-        WHERE bc.department.id = :deptId
-        GROUP BY bc.status
-    """)
-    List<StatusStatDTO> countCasesByStatus(@Param("deptId") Long deptId);
 
 
     @Query(value = """
         SELECT 
             to_char(date_trunc('month', created_at), 'Mon') AS month_label, 
             COUNT(*) AS total_count
-        FROM blotter_cases
+        FROM cases
         WHERE dept_id = :deptId 
           AND created_at >= date_trunc('month', CURRENT_DATE) - INTERVAL '4 months'
         GROUP BY date_trunc('month', created_at)
@@ -150,36 +146,44 @@ WHERE bc.department.name IN ('BLOTTER', 'LUPONG_TAGAPAMAYAPA')
 
 
 
-    @Query(value = "SELECT COUNT(*) FROM ( " +
-            "SELECT r.person_id FROM respondents r " +
-            "JOIN blotter_cases bc ON r.case_id = bc.id " +
-            "WHERE bc.dept_id = :deptId " + // Isang ID na lang
-            "AND bc.case_type = 'FOR_THE_RECORD' " +
-            "AND bc.date_filed >= :start " +
-            "GROUP BY r.person_id HAVING COUNT(*) >= 2) AS suki",
-            nativeQuery = true)
+    @Query(value = """
+    SELECT COUNT(*) FROM ( 
+        SELECT r.person_id 
+        FROM cases bc 
+        JOIN respondents r ON bc.respondent_id = r.id 
+        WHERE bc.dept_id = :deptId 
+          AND bc.case_type = 'FOR_THE_RECORD' 
+          AND bc.case_filed_at >= :start 
+        GROUP BY r.person_id 
+        HAVING COUNT(*) >= 2
+    ) AS suki
+    """, nativeQuery = true)
     long countFrequentFtrSubjects(@Param("deptId") Long deptId, @Param("start") LocalDateTime start);
 
     // 2. Most Reported Issue (Nature of Complaint)
-    @Query(value = "SELECT n.name FROM blotter_cases bc " +
-            "JOIN incident_details id ON bc.id = id.case_id " +
-            "JOIN nature_of_complaints n ON id.nature_of_complaint_id = n.id " +
-            "WHERE bc.dept_id = :deptId " +
-            "AND bc.case_type = 'FOR_THE_RECORD' " +
-            "AND bc.date_filed >= :start " +
-            "GROUP BY n.name ORDER BY COUNT(bc.id) DESC LIMIT 1",
-            nativeQuery = true)
-    Optional<String> findTopFtrNature(@Param("deptId") Long deptId, @Param("start") LocalDateTime start);
-
+    @Query(value = """
+    SELECT id.nature_of_complaint 
+    FROM cases bc 
+    JOIN incident_details id ON bc.incident_detail_id = id.id 
+    WHERE bc.dept_id = :deptId 
+      AND bc.case_type = 'FOR_THE_RECORD' 
+      AND bc.case_filed_at >= :since 
+    GROUP BY id.nature_of_complaint 
+    ORDER BY COUNT(bc.id) DESC 
+    LIMIT 1
+    """, nativeQuery = true)
+    Optional<String> findTopFtrNature(@Param("deptId") Long deptId, @Param("since") LocalDateTime since);
     // 3. Incident Times for Peak Time Card
-    @Query(value = "SELECT id.time_of_incident FROM blotter_cases bc " +
-            "JOIN incident_details id ON bc.id = id.case_id " +
-            "WHERE bc.dept_id = :deptId " +
-            "AND bc.case_type = 'FOR_THE_RECORD' " +
-            "AND bc.date_filed >= :start " +
-            "AND id.time_of_incident IS NOT NULL",
-            nativeQuery = true)
-    List<java.sql.Time> findFtrIncidentTimesRaw(@Param("deptId") Long deptId, @Param("start") LocalDateTime start);
+    @Query(value = """
+    SELECT id.incident_time 
+    FROM cases bc 
+    JOIN incident_details id ON bc.incident_detail_id = id.id 
+    WHERE bc.dept_id = :deptId 
+      AND bc.case_type = 'FOR_THE_RECORD' 
+      AND bc.case_filed_at >= :since 
+      AND id.incident_time IS NOT NULL
+    """, nativeQuery = true)
+    List<java.sql.Time> findFtrIncidentTimesRaw(@Param("deptId") Long deptId, @Param("since") LocalDateTime since);
 
     // 4. Total FTR Count
     @Query("SELECT COUNT(bc) FROM BlotterCase bc WHERE bc.department.id = :deptId " +
@@ -201,10 +205,11 @@ WHERE bc.department.name IN ('BLOTTER', 'LUPONG_TAGAPAMAYAPA')
     Long countPendingCases(@Param("deptNames") List<String> deptNames);
 
     @Query("""
-    SELECT COUNT(b.id) FROM BlotterCase b 
+    SELECT COUNT(b.id) FROM BlotterCase b
+    JOIN b.luponReferral lr
     WHERE b.department.name IN :deptNames 
     AND (b.status = 'UNDER_MEDIATION' OR b.status = 'UNDER_CONCILIATION') 
-    AND b.luponDeadline BETWEEN :now AND :warningDate
+    AND lr.deadline BETWEEN :now AND :warningDate
 """)
     Long countCasesNearingDeadline(
             @Param("deptNames") List<String> deptNames,
@@ -252,4 +257,12 @@ WHERE bc.department.name IN ('BLOTTER', 'LUPONG_TAGAPAMAYAPA')
             @Param("startDate") java.time.LocalDateTime startDate,
             @Param("endDate") java.time.LocalDateTime endDate
     );
+
+
+    List<BlotterCase> findAllByComplainant_Person(Person person);
+
+    List<BlotterCase> findAllByRespondent_Person(Person person);
+
+    @Query("SELECT bc FROM BlotterCase bc JOIN bc.witnesses w WHERE w.person = :person")
+    List<BlotterCase> findAllByWitnessPerson(@Param("person") Person person);
 }

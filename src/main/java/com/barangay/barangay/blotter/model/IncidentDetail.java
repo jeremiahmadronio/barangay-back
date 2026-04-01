@@ -20,31 +20,22 @@ public class IncidentDetail {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "case_id", nullable = false)
-    private BlotterCase blotterCase;
+    @Column(name = "nature_of_complaint")
+    private String natureOfComplaint;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "nature_of_complaint_id")
-    private NatureOfComplaint natureOfComplaint;
+    @Column(name = "incident_frequency")
+    private String frequency;
 
-    @Column
+    @Column(name = "incident_date")
     private LocalDate dateOfIncident;
 
-    @Column
+    @Column(name = "incident_time")
     private LocalTime timeOfIncident;
 
-    @Column(length = 255)
+    @Column(length = 255, name = "incident_location")
     private String placeOfIncident;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "frequency_id")
-    private IncidentFrequency frequency;
-
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT",name = "injuries_damage_description")
     private String injuriesDamagesDescription;
 
-    @CreationTimestamp
-    @Column(updatable = false, nullable = false)
-    private LocalDateTime createdAt;
 }

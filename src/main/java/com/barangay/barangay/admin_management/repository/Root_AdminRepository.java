@@ -3,8 +3,6 @@ package com.barangay.barangay.admin_management.repository;
 import com.barangay.barangay.enumerated.Status;
 import com.barangay.barangay.admin_management.dto.AdminStats;
 import com.barangay.barangay.admin_management.model.User;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -23,27 +21,28 @@ public interface Root_AdminRepository extends JpaRepository<User, UUID> {
     Optional<User> findByUsername(String username);
 
     boolean existsByUsername(String username);
-    boolean existsByEmail(String email);
 
-    Optional<User> findByEmail(String email);
+    boolean existsBySystemEmail(String email);
 
-    boolean existsByEmailAndIdNot(String email, UUID id);
+    Optional<User> findBySystemEmail(String email);
+
+
     boolean existsByUsernameAndIdNot(String username, UUID id);
 
     //unlock account scheduler
     List<User> findAllByIsLockedTrueAndLockUntilBefore(LocalDateTime now);
 
 
-    @Query("SELECT COUNT(u) FROM User u")
-    Long countAllUsers();
+    @Query("SELECT COUNT(u) FROM User u JOIN u.role r WHERE r.roleName = 'ADMIN'")
+    Long countAllAdmins();
 
-    @Query("SELECT COUNT(u) FROM User u WHERE u.status = com.barangay.barangay.enumerated.Status.ACTIVE")
-    Long countActiveUsers();
+    @Query("SELECT COUNT(u) FROM User u JOIN u.role r WHERE r.roleName = 'ADMIN' AND u.status = :status")
+    Long countActiveAdmins(@Param("status") Status status);
 
     //admin stats
     @Query("""
         SELECT new com.barangay.barangay.admin_management.dto.AdminStats(
-            COUNT(u), 
+            COUNT(u),
             SUM(CASE WHEN u.status = com.barangay.barangay.enumerated.Status.ACTIVE THEN 1 ELSE 0 END),
             SUM(CASE WHEN u.isLocked = true THEN 1 ELSE 0 END),
             SUM(CASE WHEN u.status = com.barangay.barangay.enumerated.Status.INACTIVE THEN 1 ELSE 0 END)
@@ -56,24 +55,45 @@ public interface Root_AdminRepository extends JpaRepository<User, UUID> {
 
 
     // admin table with pagination and filtering
-    @Query("""
-    SELECT DISTINCT u FROM User u
-    JOIN u.role r
-    WHERE r.roleName = 'ADMIN'
-    AND (:search IS NULL OR (
-          u.firstName ILIKE :search OR 
-          u.lastName ILIKE :search OR 
-          u.email ILIKE :search
+    @Query(value = """
+    SELECT DISTINCT u.* FROM users u
+    JOIN person p ON p.id = u.person_id
+    JOIN roles r ON r.id = u.role_id
+    WHERE r.role_name = 'ADMIN'
+    AND (CAST(:search AS text) IS NULL OR (
+          p.first_name ILIKE CONCAT('%', CAST(:search AS text), '%') OR 
+          p.last_name ILIKE CONCAT('%', CAST(:search AS text), '%') OR 
+          u.system_email ILIKE CONCAT('%', CAST(:search AS text), '%') OR
+          p.email ILIKE CONCAT('%', CAST(:search AS text), '%')
     ))
-    AND (:status IS NULL OR u.status = :status)
-""")
+    AND (CAST(:status AS text) IS NULL OR u.status = :status)
+""",
+            countQuery = """
+    SELECT COUNT(DISTINCT u.id) FROM users u
+    JOIN person p ON p.id = u.person_id
+    JOIN roles r ON r.id = u.role_id
+    WHERE r.role_name = 'ADMIN'
+    AND (CAST(:search AS text) IS NULL OR (
+          p.first_name ILIKE CONCAT('%', CAST(:search AS text), '%') OR 
+          p.last_name ILIKE CONCAT('%', CAST(:search AS text), '%') OR 
+          u.system_email ILIKE CONCAT('%', CAST(:search AS text), '%')
+    ))
+    AND (CAST(:status AS text) IS NULL OR u.status = :status)
+""", nativeQuery = true)
     Page<User> findAllAdminsWithFilters(
             @Param("search") String search,
-            @Param("status") Status status,
-            Pageable pageable);
+            @Param("status") String status, // Pinadaan natin sa String para sa Postgres compatibility
+            Pageable pageable
+    );
+
 
     @Query("SELECT u FROM User u " +
+            "JOIN FETCH u.person " +
             "JOIN FETCH u.role " +
             "LEFT JOIN FETCH u.allowedDepartments " +
-            "WHERE u.email = :email")
-    Optional<User> findByEmailWithDepartments(@Param("email") String email);}
+            "WHERE u.systemEmail = :email")
+    Optional<User> findByEmailWithDepartments(@Param("email") String email);
+
+
+
+}

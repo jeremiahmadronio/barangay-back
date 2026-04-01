@@ -6,6 +6,7 @@ import com.barangay.barangay.admin_management.dto.DashboardStats;
 import com.barangay.barangay.admin_management.dto.DeptActivityDTO;
 import com.barangay.barangay.admin_management.dto.RecentSystemAction;
 import com.barangay.barangay.admin_management.repository.Root_AdminRepository;
+import com.barangay.barangay.enumerated.Status;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,8 +30,8 @@ public class RootDashboardService {
         LocalDateTime firstDayLastMonth = firstDayThisMonth.minusMonths(1);
 
 
-        Long totalUser = userRepository.countAllUsers();
-        Long totalActive = userRepository.countActiveUsers();
+        Long totalUser = userRepository.countAllAdmins();
+        Long totalActive = userRepository.countActiveAdmins(Status.ACTIVE);
         Long totalCritical = auditLogRepository.countCriticalAlerts();
         Long totalAudit = auditLogRepository.countAllLogs();
 
@@ -38,7 +39,7 @@ public class RootDashboardService {
         Long currentMonth = auditLogRepository.countLogsThisMonth(firstDayThisMonth);
         Long lastMonth = auditLogRepository.countLogsLastMonth(firstDayLastMonth, firstDayThisMonth);
 
-        Long growth = currentMonth - lastMonth;
+        long growth = currentMonth - lastMonth;
         String direction = (growth > 0) ? "up" : (growth < 0) ? "down" : "neutral";
 
         return new DashboardStats(

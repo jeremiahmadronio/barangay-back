@@ -11,7 +11,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "hearing_follow_up")
+@Table(name = "session_follow_up")
 @Getter
 @Setter
 @NoArgsConstructor @AllArgsConstructor
@@ -22,17 +22,17 @@ public class HearingFollowUp {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "hearing_id", nullable = false)
+    @JoinColumn(name = "session_id", nullable = false)
     private Hearing hearing;
 
-    @Column(columnDefinition = "TEXT", nullable = false)
+    @Column(columnDefinition = "TEXT", nullable = false,name = "remarks")
     private String remarks;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "recorded_by")
+    @JoinColumn(name = "created_by")
     private User recordedBy;
 
     @CreationTimestamp
-    @Column(updatable = false, nullable = false)
+    @Column(updatable = false, nullable = false,name = "created_at")
     private LocalDateTime createdAt;
 }

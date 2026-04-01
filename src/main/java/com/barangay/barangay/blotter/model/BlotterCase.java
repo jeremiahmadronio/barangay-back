@@ -5,9 +5,9 @@ import com.barangay.barangay.department.model.Department;
 import com.barangay.barangay.enumerated.CaseStatus;
 import com.barangay.barangay.enumerated.CaseType;
 import com.barangay.barangay.lupon.model.PangkatCFA;
-import com.barangay.barangay.resident.model.Complainant;
-import com.barangay.barangay.resident.model.Respondent;
-import com.barangay.barangay.resident.model.Witness;
+import com.barangay.barangay.person.model.Complainant;
+import com.barangay.barangay.person.model.Respondent;
+import com.barangay.barangay.person.model.Witness;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -19,7 +19,7 @@ import java.util.List;
 
 @Entity
 @Getter @Setter
-@Table(name = "blotter_cases")
+@Table(name = "cases")
 @NoArgsConstructor
 @AllArgsConstructor
 public class BlotterCase {
@@ -28,94 +28,80 @@ public class BlotterCase {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(length = 50, unique = true, nullable = false)
+    @Column(length = 50, unique = true, nullable = false, name = "case_number")
     private String blotterNumber;
 
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, name = "case_type")
     private CaseType caseType;
 
-
-
-    @Column(nullable = false)
-    private LocalDateTime dateFiled;
-
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, name = "case_status")
     private CaseStatus status = CaseStatus.PENDING;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT", name = "case_remarks")
     private String statusRemarks;
 
 
-
-
-
-    @Column
+    @Column(name = "is_attested")
     private Boolean isCertified = false;
 
-    @Column
+    @Column(name = "attested_at")
     private LocalDateTime certifiedAt;
 
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT" ,name = "settlement_terms" )
     private String settlementTerms;
 
-    @Column
+    @Column(name = "settled_at")
     private LocalDateTime settledAt;
+
+
+
+    @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JoinColumn(name = "complainant_id")
+    private Complainant complainant;
+
+    @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JoinColumn(name = "respondent_id")
+    private Respondent respondent;
+
+    @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JoinColumn(name = "narrative_statemet_id")
+    private Narrative narrativeStatement;
+
+    @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JoinColumn(name = "incident_detail_id")
+    private IncidentDetail incidentDetail;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "dept_id")
     private Department department;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "receiving_officer_id")
-    private User receivingOfficer;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by")
+    @JoinColumn(name = "case_filed_by")
     private User createdBy;
 
-    @Column
-    private LocalDateTime referredToLuponAt;
-
-    @Column
-    private LocalDateTime luponDeadline;
-
-    @Column
-    private LocalDateTime extensionDate;
-
-    @Column(columnDefinition = "TEXT")
-    private String extensionReason;
-
-    @Column
-    private Integer extensionCount = 0;
-
     @CreationTimestamp
-    @Column(updatable = false, nullable = false)
-    private LocalDateTime createdAt;
+    @Column(name = "case_filed_at", updatable = false , nullable = false)
+    private LocalDateTime dateFiled;
 
     @UpdateTimestamp
+    @Column(name = "case_updated_at")
     private LocalDateTime updatedAt;
 
-    @OneToOne(mappedBy = "blotterCase", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private Complainant complainant;
 
-    @OneToOne(mappedBy = "blotterCase", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private Respondent respondent;
+    @OneToOne(mappedBy = "blotterCase", cascade = CascadeType.ALL)
+    private PangkatCFA pangkatCfa;
 
     @OneToMany(mappedBy = "blotterCase", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Witness> witnesses = new ArrayList<>();
 
-    @OneToOne(mappedBy = "blotterCase", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private IncidentDetail incidentDetail;
+    @OneToOne(mappedBy = "blotterCase", cascade = CascadeType.ALL)
+    private LuponReferral luponReferral;
 
-    @OneToOne(mappedBy = "blotterCase", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private Narrative narrativeStatement;
 
-    @OneToOne(mappedBy = "blotterCase", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private PangkatCFA pangkatCfa;
 
 
 

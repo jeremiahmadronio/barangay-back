@@ -18,43 +18,43 @@ import java.util.List;
 public interface PangkatHearingRepository extends JpaRepository<Hearing, Long> {
 
     @Query("""
-        SELECT new com.barangay.barangay.lupon.dto.HearingScheduleDTO(
-            h.id,
-            b.blotterNumber,
-            h.createdAt,
-            CONCAT(c.person.firstName, ' ', c.person.lastName),
-            CONCAT(r.person.firstName, ' ', r.person.lastName),
-            h.summonNumber,
-            h.scheduledStart,
-            h.scheduledEnd,
-            h.status,
-            h.notes,
-            CONCAT(u.firstName, ' ', u.lastName),
-            h.venue,
-            b.status,
-            hm.complainantPresent,
-            hm.respondentPresent,
-            hm.hearingNotes,
-            CAST(hm.outcome AS string),
-            CONCAT(rec.firstName, ' ', rec.lastName)
-        )
-        FROM Hearing h
-        JOIN h.blotterCase b
-        LEFT JOIN b.complainant c
-        LEFT JOIN b.respondent r
-        LEFT JOIN h.createdBy u
-        LEFT JOIN HearingMinutes hm ON hm.hearing = h
-        LEFT JOIN hm.recordedBy rec
-        WHERE b.department.name = :deptName
-        AND h.status IN :statuses
-        AND (
-            LOWER(b.blotterNumber) LIKE LOWER(:search) OR
-            LOWER(c.person.firstName) LIKE LOWER(:search) OR
-            LOWER(c.person.lastName) LIKE LOWER(:search) OR
-            LOWER(r.person.firstName) LIKE LOWER(:search) OR
-            LOWER(r.person.lastName) LIKE LOWER(:search)
-        )
-    """)
+    SELECT new com.barangay.barangay.lupon.dto.HearingScheduleDTO(
+        h.id,
+        b.blotterNumber,
+        h.createdAt,
+        CONCAT(c.person.firstName, ' ', c.person.lastName),
+        CONCAT(r.person.firstName, ' ', r.person.lastName),
+        h.summonNumber,
+        h.scheduledStart,
+        h.scheduledEnd,
+        h.status,
+        h.notes,
+        CONCAT(u.person.firstName, ' ', u.person.lastName), 
+        h.venue,
+        b.status,
+        hm.complainantPresent,
+        hm.respondentPresent,
+        hm.hearingNotes,
+        CAST(hm.outcome AS string),
+        CONCAT(rec.person.firstName, ' ', rec.person.lastName) 
+    )
+    FROM Hearing h
+    JOIN h.blotterCase b
+    LEFT JOIN b.complainant c
+    LEFT JOIN b.respondent r
+    LEFT JOIN h.createdBy u
+    LEFT JOIN HearingMinutes hm ON hm.hearing = h
+    LEFT JOIN hm.recordedBy rec
+    WHERE b.department.name = :deptName
+    AND h.status IN :statuses
+    AND (
+        LOWER(b.blotterNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(c.person.firstName) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(c.person.lastName) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.person.firstName) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.person.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
+    )
+""")
     Page<HearingScheduleDTO> findLuponHearingsWithFilters(
             @Param("deptName") String deptName,
             @Param("statuses") List<HearingStatus> statuses,

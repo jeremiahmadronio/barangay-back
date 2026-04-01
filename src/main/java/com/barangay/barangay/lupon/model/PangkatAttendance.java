@@ -8,7 +8,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name="pangkat_attendance")
+@Table(name="lupon_attendance")
 @Getter
 @Setter
 @AllArgsConstructor
@@ -20,18 +20,18 @@ public class PangkatAttendance {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "hearing_id", nullable = false)
+    @JoinColumn(name = "session_id", nullable = false)
     private Hearing hearing;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "pangkat_member_id", nullable = false)
+    @JoinColumn(name = "lupon_composition_id", nullable = false)
     private PangkatComposition pangkatMember;
 
-        @Column(nullable = false)
+        @Column(nullable = false, name = "is_present")
     private Boolean isPresent = false;
 
     @CreationTimestamp
-    @Column(updatable = false, nullable = false)
+    @Column(updatable = false, nullable = false, name = "created_at")
     private LocalDateTime createdAt;
 
 

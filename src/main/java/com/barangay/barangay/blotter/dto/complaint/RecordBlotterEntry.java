@@ -27,7 +27,7 @@ public record RecordBlotterEntry(
         String relationshipToComplainant,
         String respondentAddress,
 
-        @NotNull Long natureOfComplaintId,
+        @NotNull String natureOfComplaintId,
         @NotNull LocalDate dateOfIncident,
         LocalTime timeOfIncident,
         @NotBlank String placeOfIncident,

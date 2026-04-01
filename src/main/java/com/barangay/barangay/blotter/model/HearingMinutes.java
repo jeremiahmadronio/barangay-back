@@ -13,7 +13,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "hearing_minutes")
+@Table(name = "session_minutes")
 @Getter @Setter @AllArgsConstructor @NoArgsConstructor
 public class HearingMinutes {
 
@@ -22,28 +22,28 @@ public class HearingMinutes {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "hearing_id", nullable = false)
+    @JoinColumn(name = "session_id", nullable = false)
     private Hearing hearing;
 
-    @Column
+    @Column(name = "is_complainant_present")
     private Boolean complainantPresent = false;
 
-    @Column
+    @Column(name = "is_respondent_present")
     private Boolean respondentPresent = false;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT",name = "session_notes")
     private String hearingNotes;
 
     @Enumerated(EnumType.STRING)
-    @Column
+    @Column(name = "outcome")
     private HearingOutcome outcome;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "recorded_by")
+    @JoinColumn(name = "created_by")
     private User recordedBy;
 
     @CreationTimestamp
-    @Column(updatable = false   , nullable = false)
+    @Column(updatable = false, nullable = false, name = "created_at")
     private LocalDateTime createdAt;
 
 

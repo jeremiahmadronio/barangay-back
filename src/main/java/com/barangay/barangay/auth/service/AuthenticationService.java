@@ -39,7 +39,7 @@ public LoginResponse authenticate(Login request, String ipAddress) {
             new UsernamePasswordAuthenticationToken(request.email(), request.password())
     );
 
-    User user = userRepository.findByEmail(request.email())
+    User user = userRepository.findBySystemEmail(request.email())
             .orElseThrow(() -> new RuntimeException("User not found"));
 
     // MFA logic...
@@ -47,13 +47,11 @@ public LoginResponse authenticate(Login request, String ipAddress) {
     user.setMfaCode(code);
     user.setMfaExpiry(LocalDateTime.now().plusMinutes(5));
     userRepository.save(user);
-    mfaService.sendMfaEmail(user.getEmail(), code);
+    mfaService.sendMfaEmail(user.getSystemEmail(), code);
 
-    // Initial response: Wala pang token, pero may role na
     return new LoginResponse("MFA_REQUIRED", user.getId(), user.getRole().getRoleName(), null);
 }
     public LoginResponse verifyMfa(MfaRequest request, String ipAddress) {
-        // 1. Fetch User (Gamitin ang 'JOIN FETCH' sa repo para iwas error sa departments) [cite: 2026-03-12]
         User user = userRepository.findByEmailWithDepartments(request.email())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -88,7 +86,7 @@ public LoginResponse authenticate(Login request, String ipAddress) {
 
 
     public void initiateForgotPassword(String email) {
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findBySystemEmail(email)
                 .orElseThrow(() -> new RuntimeException("Email not found."));
 
         String code = mfaService.generateCode();
@@ -96,11 +94,11 @@ public LoginResponse authenticate(Login request, String ipAddress) {
         user.setMfaExpiry(LocalDateTime.now().plusMinutes(5));
         userRepository.save(user);
 
-        mfaService.sendMfaEmail(user.getEmail(), code);
+        mfaService.sendMfaEmail(user.getSystemEmail(), code);
     }
 
     public void verifyResetCode(VerifyCodeRequest request) {
-        User user = userRepository.findByEmail(request.email())
+        User user = userRepository.findBySystemEmail(request.email())
                 .orElseThrow(() -> new RuntimeException("User not found."));
 
         if (user.getMfaCode() == null || !user.getMfaCode().equals(request.code())) {
@@ -114,7 +112,7 @@ public LoginResponse authenticate(Login request, String ipAddress) {
     }
 
     public void completePasswordReset(ResetPasswordRequest request) {
-        User user = userRepository.findByEmail(request.email())
+        User user = userRepository.findBySystemEmail(request.email())
                 .orElseThrow(() -> new RuntimeException("User not found."));
 
 

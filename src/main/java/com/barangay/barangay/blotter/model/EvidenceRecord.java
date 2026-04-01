@@ -29,9 +29,8 @@ public class EvidenceRecord {
 
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "received_by")
+    @JoinColumn(name = "created_by")
     private User receivedBy;
 
-    @CreationTimestamp
-    private LocalDateTime createdAt;
+
 }

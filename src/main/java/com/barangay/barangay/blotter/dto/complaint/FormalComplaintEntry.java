@@ -35,12 +35,12 @@ public record FormalComplaintEntry(
          String relationshipTypeName,
         boolean livingWithComplainant,
 
-        @NotNull Long natureOfComplaintId,
+        @NotNull String natureOfComplaintId,
 
         @NotNull LocalDate dateOfIncident,
         LocalTime timeOfIncident,
         @NotBlank String placeOfIncident,
-        Long frequencyOfIncident,
+        String frequencyOfIncident,
         String descriptionOfInjuries,
 
         @NotBlank String narrativeStatement,

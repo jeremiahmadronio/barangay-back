@@ -6,6 +6,7 @@ import com.barangay.barangay.blotter.dto.hearing.HearingFullDetailsDTO;
 import com.barangay.barangay.blotter.dto.hearing.RecordMinutesRequest;
 import com.barangay.barangay.blotter.dto.hearing.ScheduleHearingRequest;
 import com.barangay.barangay.blotter.service.HearingService;
+import com.barangay.barangay.lupon.dto.UpdateHearingStatusDTO;
 import com.barangay.barangay.security.CustomUserDetails;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 public class HearingController {
 
     private final HearingService hearingService;
+
 
 
     @PostMapping("/schedule-hearing")
@@ -69,4 +71,23 @@ public class HearingController {
             return ResponseEntity.ok(hearingService.getHearingFullDetails(hearingId));
         }
 
+
+    @PutMapping("/new-status/{hearingId}")
+    public ResponseEntity<String> updateHearingStatus(
+            @PathVariable Long hearingId,
+            @Valid @RequestBody UpdateHearingStatusDTO request,
+            @AuthenticationPrincipal CustomUserDetails actor ,
+            HttpServletRequest httpRequest) {
+
+        String ipAddress = IpAddressUtils.getClientIp(httpRequest);
+
+        hearingService.updateHearingStatus(
+                hearingId,
+                request.newStatus(),
+                request.remarks(),
+                actor.user(),
+                ipAddress
+        );
+        return ResponseEntity.ok("Hearing status successfully updated to " + request.newStatus());
+    }
 }

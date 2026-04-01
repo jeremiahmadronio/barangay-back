@@ -2,6 +2,8 @@ package com.barangay.barangay.admin_management.service;
 
 import com.barangay.barangay.audit.service.AuditLogService;
 import com.barangay.barangay.department.model.Department;
+import com.barangay.barangay.person.model.Person;
+import com.barangay.barangay.person.repository.PersonRepository;
 import com.barangay.barangay.role.model.Role;
 import com.barangay.barangay.department.repository.DepartmentRepository;
 import com.barangay.barangay.role.repository.RoleRepository;
@@ -33,6 +35,7 @@ public class UserService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuditLogService auditLogService;
+    private final PersonRepository  personRepository;
 
 
 
@@ -49,7 +52,7 @@ public class UserService {
     @Transactional
     public void createAdminAccount(CreateAdmin createAdmin, User actor, String ipAddress) {
 
-        if (userRepository.existsByEmail(createAdmin.email())) {
+        if (userRepository.existsBySystemEmail(createAdmin.email())) {
             throw new RuntimeException("Email already exists.");
         }
 
@@ -67,18 +70,26 @@ public class UserService {
             departments.addAll(departmentRepository.findAllById(createAdmin.departmentIds()));
         }
 
+        Person person = new Person();
+
+        person.setFirstName(createAdmin.firstName());
+        person.setLastName(createAdmin.lastName());
+        person.setContactNumber(createAdmin.contactNumber());
+        person.setEmail(createAdmin.email());
+
+        person = personRepository.save(person);
+
         User newAdmin = new User();
-        newAdmin.setFirstName(createAdmin.firstName());
-        newAdmin.setLastName(createAdmin.lastName());
-        newAdmin.setEmail(createAdmin.email());
+
+        newAdmin.setSystemEmail(createAdmin.email());
         newAdmin.setUsername(createAdmin.username());
         newAdmin.setPassword(passwordEncoder.encode(createAdmin.password()));
-        newAdmin.setContactNumber(createAdmin.contactNumber());
         newAdmin.setRole(selectedRole);
         newAdmin.setAllowedDepartments(departments);
         newAdmin.setStatus(createAdmin.activateImmediately() ? Status.ACTIVE : Status.INACTIVE);
         newAdmin.setFailedAttempts(0);
         newAdmin.setIsLocked(false);
+        newAdmin.setPerson(person);
 
         User savedAdmin = userRepository.save(newAdmin);
 
@@ -89,8 +100,8 @@ public class UserService {
         String newState = String.format(
                 "Username: %s | Full Name: %s %s | Role: %s | Departments: [%s]",
                 savedAdmin.getUsername(),
-                savedAdmin.getFirstName(),
-                savedAdmin.getLastName(),
+                savedAdmin.getPerson().getFirstName(),
+                savedAdmin.getPerson().getLastName(),
                 selectedRole.getRoleName(),
                 departmentNames
         );
@@ -102,7 +113,7 @@ public class UserService {
                 Severity.WARNING,
                 "CREATE_ADMIN",
                 ipAddress,
-                "Root Admin created a new Admin account for " + savedAdmin.getFirstName() + " " + savedAdmin.getLastName(),
+                "Root Admin created a new Admin account for " + savedAdmin.getPerson().getFirstName() + " " + savedAdmin.getPerson().getLastName(),
                 null,
                 newState
         );
@@ -112,24 +123,22 @@ public class UserService {
     @Transactional(readOnly = true)
     public Page<AdminTable> displayAllAdminTables(String search, Status status, int page, int size) {
 
-        // 1. Setup Pagination & Sorting
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
 
-        // 2. Query the Repository (Search at Status na lang ang pinapasa natin) [cite: 2026-03-09]
+        Pageable pageable = PageRequest.of(page, size, Sort.by("created_at").descending());
+
         Page<User> users = userRepository.findAllAdminsWithFilters(
                 (search != null && !search.isBlank()) ? search.trim() : null,
-                status,
+                status != null ? status.name() : null,
                 pageable
         );
 
-        // 3. Map to AdminTable DTO (Null-safe approach) [cite: 2026-03-09]
         return users.map(user -> new AdminTable(
                 user.getId(),
                 user.getUsername(),
-                user.getFirstName(),
-                user.getLastName(),
-                user.getEmail(),
-                user.getContactNumber(),
+                user.getPerson().getFirstName(),
+                user.getPerson().getLastName(),
+                user.getSystemEmail(),
+                user.getPerson().getContactNumber(),
                 user.getRole() != null ? user.getRole().getRoleName() : "N/A",
                 user.getAllowedDepartments().stream()
                         .map(Department::getName)
@@ -146,29 +155,37 @@ public class UserService {
 
     @Transactional
     public void updateAdminAccount(UUID userId, UpdateAdmin updateDto, User actor, String ipAddress) {
+        // 1. Fetch User and Person
         User userToEdit = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User to edit not found."));
 
+        Person person = userToEdit.getPerson();
+
         AdminTable oldState = mapToAdminTable(userToEdit);
 
-        if (userRepository.existsByEmailAndIdNot(updateDto.email(), userId)) {
+
+        if (userRepository.existsBySystemEmail(updateDto.email())) {
             throw new RuntimeException("Email is already taken.");
         }
         if (userRepository.existsByUsernameAndIdNot(updateDto.username(), userId)) {
             throw new RuntimeException("Username is already taken.");
         }
 
-        // 3. I-apply ang Updates
-        userToEdit.setFirstName(updateDto.firstName());
-        userToEdit.setLastName(updateDto.lastName());
-        userToEdit.setEmail(updateDto.email());
+        // 4. I-apply ang Updates sa Person Entity (Identity)
+        person.setFirstName(updateDto.firstName());
+        person.setLastName(updateDto.lastName());
+        person.setContactNumber(updateDto.contactNumber());
+        person.setEmail(updateDto.email()); // I-sync din natin ang profile email sa Person
+
+        // 5. I-apply ang Updates sa User Entity (Account)
         userToEdit.setUsername(updateDto.username());
-        userToEdit.setContactNumber(updateDto.contactNumber());
+        userToEdit.setSystemEmail(updateDto.email()); // Login email
 
         if (updateDto.password() != null && !updateDto.password().isBlank()) {
             userToEdit.setPassword(passwordEncoder.encode(updateDto.password()));
         }
 
+        // 6. Handle Department Assignments
         Set<Department> newDepts = new HashSet<>();
         if (updateDto.allDepartments()) {
             newDepts.addAll(departmentRepository.findAll());
@@ -177,9 +194,11 @@ public class UserService {
         }
         userToEdit.setAllowedDepartments(newDepts);
 
+        // 7. Save (Dahil sa @Transactional, automatic na mase-save ang changes sa Person at User)
         User savedUser = userRepository.save(userToEdit);
         AdminTable newState = mapToAdminTable(savedUser);
 
+        // 8. Compare Changes and Log
         Map<String, Object> changesOld = new HashMap<>();
         Map<String, Object> changesNew = new HashMap<>();
 
@@ -198,9 +217,9 @@ public class UserService {
                     Severity.WARNING,
                     "UPDATE_ADMIN",
                     ipAddress,
-                    "Updated admin account for: " + savedUser.getFirstName() + " " + savedUser.getLastName(),
+                    "Updated admin account for: " + person.getFirstName() + " " + person.getLastName(),
                     changesOld,
-                    changesNew
+                    changesNew // Idinagdag ko 'to dahil kulang sa prompt mo
             );
         }
     }
@@ -217,10 +236,10 @@ public class UserService {
         return new AdminTable(
                 user.getId(),
                 user.getUsername(),
-                user.getFirstName(),
-                user.getLastName(),
-                user.getEmail(),
-                user.getContactNumber(),
+                user.getPerson().getFirstName(),
+                user.getPerson().getLastName(),
+                user.getSystemEmail(),
+                user.getPerson().getContactNumber(),
                 user.getRole().getRoleName(),
                 user.getAllowedDepartments().stream()
                         .map(Department::getName)
@@ -317,10 +336,10 @@ public class UserService {
         return new UserSettingsPreview(
                 currentUser.getId(),
                 currentUser.getUsername(),
-                currentUser.getEmail(),
-                currentUser.getFirstName(),
-                currentUser.getLastName(),
-                currentUser.getContactNumber()
+                currentUser.getSystemEmail(),
+                currentUser.getPerson().getFirstName(),
+                currentUser.getPerson().getLastName(),
+                currentUser.getPerson().getContactNumber()
         );
     }
 
@@ -330,15 +349,20 @@ public class UserService {
         User managedUser = userRepository.findById(user.getId())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        Map<String, Object> oldData = new LinkedHashMap<>();
-        oldData.put("firstName", managedUser.getFirstName());
-        oldData.put("lastName", managedUser.getLastName());
-        oldData.put("email", managedUser.getEmail());
-        oldData.put("contactNumber", managedUser.getContactNumber());
+        Person person = managedUser.getPerson();
 
-        managedUser.setFirstName(dto.firstName());
-        managedUser.setLastName(dto.lastName());
-        managedUser.setContactNumber(dto.contactNumber());
+        Map<String, Object> oldData = new LinkedHashMap<>();
+        oldData.put("firstName", person.getFirstName());
+        oldData.put("lastName", person.getLastName());
+        oldData.put("email", managedUser.getSystemEmail());
+        oldData.put("contactNumber", person.getContactNumber());
+
+        person.setFirstName(dto.firstName());
+        person.setLastName(dto.lastName());
+        person.setContactNumber(dto.contactNumber());
+        person.setEmail(dto.email());
+
+        managedUser.setSystemEmail(dto.email());
 
         if (dto.password() != null && !dto.password().isBlank()) {
             managedUser.setPassword(passwordEncoder.encode(dto.password()));
@@ -360,7 +384,8 @@ public class UserService {
                 Severity.INFO,
                 "UPDATE_SELF_PROFILE",
                 ipAddress,
-                String.format("User %s updated their own profile details.", managedUser.getUsername()),
+                String.format("User %s (%s %s) updated their own profile details.",
+                        managedUser.getUsername(), person.getFirstName(), person.getLastName()),
                 oldData,
                 newData
         );

@@ -1,14 +1,12 @@
 package com.barangay.barangay.lupon.service;
 
 import com.barangay.barangay.admin_management.model.User;
-import com.barangay.barangay.audit.model.AuditLog;
 import com.barangay.barangay.audit.service.AuditLogService;
-import com.barangay.barangay.blotter.dto.notes.AddCaseNoteRequest;
 import com.barangay.barangay.blotter.model.*;
 import com.barangay.barangay.blotter.repository.BlotterCaseRepository;
-import com.barangay.barangay.blotter.repository.CaseNoteRepository;
 import com.barangay.barangay.blotter.repository.CasteTimeLineRepository;
 import com.barangay.barangay.blotter.repository.HearingMinutesRepository;
+import com.barangay.barangay.blotter.repository.LuponReferralRepository;
 import com.barangay.barangay.department.model.Department;
 import com.barangay.barangay.department.repository.DepartmentRepository;
 import com.barangay.barangay.enumerated.*;
@@ -19,12 +17,9 @@ import com.barangay.barangay.lupon.repository.CaseRepository;
 import com.barangay.barangay.lupon.repository.PangkatAttendanceRepository;
 import com.barangay.barangay.lupon.repository.PangkatCompositionRepository;
 import com.barangay.barangay.lupon.repository.PangkatHearingRepository;
-import com.barangay.barangay.resident.model.Employee;
-import com.barangay.barangay.resident.model.People;
-import com.barangay.barangay.resident.repository.EmployeeRepository;
-import com.barangay.barangay.resident.repository.PeopleRepository;
-import com.barangay.barangay.user_management.repository.UserManagementRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.barangay.barangay.employee.model.Employee;
+import com.barangay.barangay.employee.repository.EmployeeRepository;
+import com.barangay.barangay.person.repository.PersonRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -53,8 +48,9 @@ public class PangkatService {
     private final PangkatHearingRepository hearingRepository;
     private final CasteTimeLineRepository caseTimeLineRepository;
     private final HearingMinutesRepository hearingMinutesRepository;
-    private final PeopleRepository peopleRepository;
+    private final PersonRepository personRepository;
     private final EmployeeRepository employeeRepository;
+    private final LuponReferralRepository luponReferralRepository;
 
 
 
@@ -110,12 +106,17 @@ public class PangkatService {
             hearingRepository.saveAll(activeHearings);
         }
 
-        // 5. Update Case Status & Set 15-day Deadline
+        LuponReferral luponReferral = new LuponReferral();
+        luponReferral.setBlotterCase(blotterCase);
+        luponReferral.setReferredAt(now);
+        luponReferral.setDeadline(now.plusDays(15));
+        luponReferral = luponReferralRepository.save(luponReferral);
+
+
         blotterCase.setDepartment(luponDept);
         blotterCase.setStatus(CaseStatus.UNDER_CONCILIATION);
-        blotterCase.setReferredToLuponAt(now);
-        blotterCase.setLuponDeadline(now.plusDays(15)); // Reset timer for Lupon
         blotterCase.setStatusRemarks("Case referred to Lupon for formal conciliation.");
+        blotterCase.setLuponReferral(luponReferral);
 
         blotterCaseRepository.save(blotterCase);
 
@@ -193,30 +194,46 @@ public class PangkatService {
         BlotterCase blotterCase = blotterCaseRepository.findById(caseId)
                 .orElseThrow(() -> new EntityNotFoundException("Case not found."));
 
-        if (blotterCase.getExtensionCount() != null && blotterCase.getExtensionCount() >= 1) {
-            throw new IllegalStateException("Extension Denied: This case has already reached the maximum 1-time extension limit.");
+        LuponReferral referral = blotterCase.getLuponReferral();
+
+        if (referral == null) {
+            throw new IllegalStateException("Extension Denied: This case has not been referred to Lupon yet.");
         }
 
         if (blotterCase.getStatus() != CaseStatus.UNDER_CONCILIATION) {
-            throw new IllegalStateException("Extension Denied: Case must be UNDER_CONCILIATION to extend.");
+            throw new IllegalStateException("Extension Denied: Case status is " + blotterCase.getStatus() + ". Must be UNDER_CONCILIATION.");
         }
 
-        blotterCase.setExtensionReason(request.reason());
-        blotterCase.setExtensionDate(LocalDateTime.now());
-
-        int currentCount = (blotterCase.getExtensionCount() == null) ? 0 : blotterCase.getExtensionCount();
-        blotterCase.setExtensionCount(currentCount + 1);
-
-        if (blotterCase.getLuponDeadline() != null) {
-            blotterCase.setLuponDeadline(blotterCase.getLuponDeadline().plusDays(15));
+        if (referral.getExtensionCount() != null && referral.getExtensionCount() >= 1) {
+            throw new IllegalStateException("Extension Denied: Maximum 1-time extension reached (KP Law Limit).");
         }
 
-        auditLogService.log(actor, Departments.LUPONG_TAGAPAMAYAPA, "LUPON_EXTENSION",
-                Severity.WARNING, "EXTEND_PERIOD", ipAddress,
-                "Extended Case #" + blotterCase.getBlotterNumber() + ". New Deadline: " + blotterCase.getLuponDeadline(),
-                null, null);
+        referral.setExtensionReason(request.reason());
+        referral.setExtensionAt(LocalDateTime.now());
+
+        int currentCount = (referral.getExtensionCount() == null) ? 0 : referral.getExtensionCount();
+        referral.setExtensionCount(currentCount + 1);
+
+        if (referral.getDeadline() != null) {
+            referral.setDeadline(referral.getDeadline().plusDays(15));
+        }
+
+
+        luponReferralRepository.save(referral);
+
+        // 8. Audit Logging
+        auditLogService.log(
+                actor,
+                Departments.LUPONG_TAGAPAMAYAPA,
+                "LUPON_EXTENSION",
+                Severity.WARNING,
+                "EXTEND_PERIOD",
+                ipAddress,
+                "Extended Case #" + blotterCase.getBlotterNumber() + ". New Deadline: " + referral.getDeadline(),
+                null,
+                null
+        );
     }
-
 
 
     @Transactional(readOnly = true)
@@ -234,13 +251,13 @@ public class PangkatService {
         } else {
             String normalizedTab = tab.trim().toUpperCase();
             if (normalizedTab.equals("SCHEDULED")) {
-                targetStatuses = Arrays.asList(HearingStatus.SCHEDULED);
+                targetStatuses = List.of(HearingStatus.SCHEDULED);
             } else if (normalizedTab.equals("COMPLETED")) {
-                targetStatuses = Arrays.asList(HearingStatus.COMPLETED);
+                targetStatuses = List.of(HearingStatus.COMPLETED);
             } else if (normalizedTab.equals("POSTPONED")) {
-                targetStatuses = Arrays.asList(HearingStatus.RESCHEDULED); // UI says Postponed, DB says Rescheduled
+                targetStatuses = List.of(HearingStatus.RESCHEDULED);
             } else if (normalizedTab.equals("CANCELLED")) {
-                targetStatuses = Arrays.asList(HearingStatus.CANCELLED);
+                targetStatuses = List.of(HearingStatus.CANCELLED);
             } else {
                 targetStatuses = Arrays.asList(HearingStatus.values());
             }
@@ -449,7 +466,7 @@ public class PangkatService {
                         f.getId(),
                         f.getRemarks(),
                         f.getRecordedBy() != null ?
-                                f.getRecordedBy().getFirstName() + " " + f.getRecordedBy().getLastName() : "System",
+                                f.getRecordedBy().getPerson().getFirstName() + " " + f.getRecordedBy().getPerson().getLastName() : "System",
                         f.getCreatedAt()
                 )).collect(Collectors.toList());
 
@@ -469,7 +486,7 @@ public class PangkatService {
                 minutes.getOutcome() != null ? minutes.getOutcome().name() : "PENDING",
 
                 minutes.getRecordedBy() != null ?
-                        minutes.getRecordedBy().getFirstName() + " " + minutes.getRecordedBy().getLastName() : "Unknown",
+                        minutes.getRecordedBy().getPerson().getFirstName() + " " + minutes.getRecordedBy().getPerson().getLastName() : "Unknown",
 
                 followUpNotes
         );

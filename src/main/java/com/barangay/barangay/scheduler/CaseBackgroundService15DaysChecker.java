@@ -38,7 +38,7 @@ public class CaseBackgroundService15DaysChecker {
 
 
         List<BlotterCase> expiredLuponCases = blotterRepository
-                .findAllByStatusAndDepartmentNameAndLuponDeadlineBefore(
+                .findAllByStatusAndDepartmentNameAndLuponReferral_DeadlineBefore    (
                         CaseStatus.UNDER_CONCILIATION, LUPON_DEPT_NAME, now);
 
         for (BlotterCase bc : expiredLuponCases) {

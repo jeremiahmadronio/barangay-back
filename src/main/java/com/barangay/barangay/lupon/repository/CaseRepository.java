@@ -34,7 +34,7 @@ public interface CaseRepository extends JpaRepository<BlotterCase,Long> {
         b.blotterNumber,
         CONCAT(c.person.firstName, ' ', c.person.lastName),
         CONCAT(r.person.firstName, ' ', r.person.lastName),
-        n.name,
+        id.natureOfComplaint,
         b.dateFiled,
         CAST(b.status AS string)
     )
@@ -44,8 +44,7 @@ public interface CaseRepository extends JpaRepository<BlotterCase,Long> {
     JOIN b.incidentDetail id
     JOIN id.natureOfComplaint n
     WHERE b.department.name = :deptName
-    AND b.status IN :statuses /* 👈 ITO YUNG DINAGDAG NA CONDITION PARA SA STATUS */
-    AND (CAST(:natureId AS Long) IS NULL OR n.id = :natureId)
+    AND b.status IN :statuses
     AND (CAST(:startDate AS LocalDateTime) IS NULL OR b.dateFiled >= :startDate)
     AND (CAST(:endDate AS LocalDateTime) IS NULL OR b.dateFiled <= :endDate)
     AND (CAST(:search AS String) IS NULL OR (
@@ -67,18 +66,17 @@ public interface CaseRepository extends JpaRepository<BlotterCase,Long> {
             Pageable pageable);
 
 
-    @Query("SELECT COUNT(bc) FROM BlotterCase bc WHERE bc.referredToLuponAt IS NOT NULL AND bc.department.id = :deptId")
+    @Query("SELECT COUNT(bc) FROM BlotterCase bc WHERE bc.luponReferral IS NOT NULL AND bc.department.id = :deptId")
     long countTotalReferred(@Param("deptId") Long deptId);
 
-    @Query("SELECT COUNT(bc) FROM BlotterCase bc WHERE bc.referredToLuponAt IS NOT NULL AND bc.status = 'UNDER_CONCILIATION' AND bc.department.id = :deptId")
+    @Query("SELECT COUNT(bc) FROM BlotterCase bc WHERE bc.luponReferral IS NOT NULL AND bc.status = 'UNDER_CONCILIATION' AND bc.department.id = :deptId")
     long countActiveConciliation(@Param("deptId") Long deptId);
 
-    @Query("SELECT COUNT(bc) FROM BlotterCase bc WHERE bc.referredToLuponAt IS NOT NULL AND bc.settledAt IS NOT NULL AND bc.department.id = :deptId")
+    @Query("SELECT COUNT(bc) FROM BlotterCase bc WHERE bc.luponReferral IS NOT NULL AND bc.settledAt IS NOT NULL AND bc.department.id = :deptId")
     long countSettled(@Param("deptId") Long deptId);
 
-    @Query("SELECT COUNT(bc) FROM BlotterCase bc WHERE bc.referredToLuponAt IS NOT NULL AND bc.status = 'CERTIFIED_TO_FILE_ACTION' AND bc.department.id = :deptId")
+    @Query("SELECT COUNT(bc) FROM BlotterCase bc WHERE bc.luponReferral IS NOT NULL AND bc.status = 'CERTIFIED_TO_FILE_ACTION' AND bc.department.id = :deptId")
     long countCfaIssued(@Param("deptId") Long deptId);
-
 
     @EntityGraph(attributePaths = {
             "department", "receivingOfficer", "complainant.person",
@@ -99,11 +97,12 @@ public interface CaseRepository extends JpaRepository<BlotterCase,Long> {
     Long countPendingCases(@Param("deptName") String deptName);
 
     @Query("""
-        SELECT COUNT(b.id) FROM BlotterCase b 
-        WHERE b.department.name = :deptName 
-        AND b.status = 'UNDER_CONCILIATION' 
-        AND b.luponDeadline BETWEEN :now AND :warningDate
-    """)
+    SELECT COUNT(b.id) FROM BlotterCase b 
+    JOIN b.luponReferral lr 
+    WHERE b.department.name = :deptName 
+    AND b.status = 'UNDER_CONCILIATION' 
+    AND lr.deadline BETWEEN :now AND :warningDate
+""")
     Long countCasesNearingDeadline(
             @Param("deptName") String deptName,
             @Param("now") LocalDateTime now,
@@ -196,22 +195,21 @@ public interface CaseRepository extends JpaRepository<BlotterCase,Long> {
 
 
     @Query("""
-        SELECT new com.barangay.barangay.lupon.dto.reports.NatureReportDTO(
-            nc.name, 
-            COUNT(bc)
-        )
-        FROM BlotterCase bc
-        JOIN bc.incidentDetail id
-        JOIN id.natureOfComplaint nc
-        WHERE bc.department.name = 'LUPONG_TAGAPAMAYAPA'
-        AND bc.dateFiled BETWEEN :startDate AND :endDate
-        GROUP BY nc.name
-        ORDER BY COUNT(bc) DESC
-    """)
+    SELECT new com.barangay.barangay.lupon.dto.reports.NatureReportDTO(
+        id.natureOfComplaint, 
+        COUNT(bc)
+    )
+    FROM BlotterCase bc
+    JOIN bc.incidentDetail id
+    WHERE bc.department.name = 'LUPONG_TAGAPAMAYAPA'
+    AND bc.dateFiled BETWEEN :startDate AND :endDate
+    GROUP BY id.natureOfComplaint
+    ORDER BY COUNT(bc) DESC
+""")
     List<NatureReportDTO> getTop5NatureByLupon(
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate,
-            Pageable pageable
+            Pageable pageable // I-pass mo rito ang PageRequest.of(0, 5) sa Service layer
     );
 
 

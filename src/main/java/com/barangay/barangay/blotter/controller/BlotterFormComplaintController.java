@@ -43,14 +43,5 @@ public class BlotterFormComplaintController {
     }
 
 
-    @PostMapping("/escalate/{blotterNumber}")
-    public ResponseEntity<?> escalateToFormalComplaint(
-          @PathVariable  String blotterNumber,
-            @Valid @RequestBody FormalComplaintEntry dto,
-           @AuthenticationPrincipal CustomUserDetails userDetails,
-            HttpServletRequest request
-    ){
-        String ipAddress = IpAddressUtils.getClientIp(request);
-        return ResponseEntity.ok(blotterService.escalateToFormalComplaint(blotterNumber, dto, userDetails.user(), ipAddress));
-    }
+
 }

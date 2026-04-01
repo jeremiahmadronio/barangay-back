@@ -23,7 +23,7 @@ public class CaseNote {
     @JoinColumn(name = "case_id", nullable = false)
     private BlotterCase blotterCase;
 
-    @Column(columnDefinition = "TEXT", nullable = false)
+    @Column(columnDefinition = "TEXT", nullable = false, name = "notes")
     private String note;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -31,6 +31,6 @@ public class CaseNote {
     private User createdBy;
 
     @CreationTimestamp
-    @Column(updatable = false, nullable = false)
+    @Column(updatable = false, nullable = false, name = "created_at")
     private LocalDateTime createdAt;
 }

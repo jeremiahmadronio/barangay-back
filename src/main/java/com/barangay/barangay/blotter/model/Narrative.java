@@ -19,9 +19,7 @@ public class Narrative {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne (fetch = FetchType.LAZY)
-    @JoinColumn(name = "case_id", nullable = false)
-    private BlotterCase blotterCase;
+
 
     @Column(columnDefinition = "TEXT", nullable = false)
     private String statement;
@@ -30,6 +28,5 @@ public class Narrative {
     @Column(updatable = false, nullable = false)
     private LocalDateTime createdAt;
 
-    @UpdateTimestamp
-    private LocalDateTime updatedAt;
+
 }

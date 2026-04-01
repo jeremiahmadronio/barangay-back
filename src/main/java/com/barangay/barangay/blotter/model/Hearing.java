@@ -16,7 +16,7 @@ import java.util.List;
 
 @Entity
 @Table(
-        name = "hearings",
+        name = "case_session",
         uniqueConstraints = @UniqueConstraint(columnNames = {"case_id", "summon_number"})
 )
 @Getter @Setter @AllArgsConstructor @NoArgsConstructor
@@ -30,36 +30,30 @@ public class Hearing {
     @JoinColumn(name = "case_id", nullable = false)
     private BlotterCase blotterCase;
 
-    @Column(nullable = false)
+    @Column(nullable = false, name = "summon_number")
     private Short summonNumber;
 
 
-    @Column(nullable = false)
+    @Column(nullable = false, name = "session_start")
     private LocalDateTime scheduledStart;
 
 
-    @Column(nullable = false)
+    @Column(nullable = false, name = "session_end")
     private LocalDateTime scheduledEnd;
 
 
-    @Column(length = 255)
+    @Column(length = 255, name = "venue")
     private String venue = "Barangay Hall";
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT", name = "additional_notes")
     private String notes;
 
     @Enumerated(EnumType.STRING)
-    @Column
+    @Column(name = "session_status")
     private HearingStatus status = HearingStatus.SCHEDULED;
 
 
-    @OneToMany(mappedBy = "hearing", cascade = CascadeType.ALL, orphanRemoval = true)
-    @OrderBy("createdAt DESC")
-    private List<HearingFollowUp> followUps = new ArrayList<>();
-
-
-
-    @Column
+    @Column(name = "paanyaya_generated_at")
     private LocalDateTime paanyayaGeneratedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -67,9 +61,12 @@ public class Hearing {
     private User createdBy;
 
     @CreationTimestamp
-    @Column(updatable = false, nullable = false)
+    @Column(updatable = false, nullable = false, name = "created_at")
     private LocalDateTime createdAt;
 
-    @UpdateTimestamp
-    private LocalDateTime updatedAt;
+
+    @OneToMany(mappedBy = "hearing", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("createdAt DESC")
+    private List<HearingFollowUp> followUps = new ArrayList<>();
+
 }

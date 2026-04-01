@@ -39,7 +39,6 @@ public class BlotterService {
     private final AuditLogService auditLogService;
     private final CasteTimeLineRepository caseTimeLineRepository;
     private final EvidenceTypeRepository  evidenceTypeRepository;
-    private final NatureOfComplaintRepository natureOfComplaintRepository;
     private final HearingRepository hearingRepository;
 
 
@@ -174,7 +173,7 @@ public class BlotterService {
             Map<String, Object> snapshot = new LinkedHashMap<>();
             snapshot.put("caseNumber", bc.getBlotterNumber());
             snapshot.put("noteSnippet", note.substring(0, Math.min(note.length(), 100)));
-            snapshot.put("officer", officer.getFirstName() + " " + officer.getLastName());
+            snapshot.put("officer", officer.getPerson().getFirstName() + " " + officer.getPerson().getLastName());
 
             String jsonState = objectMapper.writeValueAsString(snapshot);
 
@@ -206,21 +205,10 @@ public class BlotterService {
                 .toList();
     }
 
-    public List<NatureOptionDTO> getNatureOptions() {
-        return natureOfComplaintRepository.findByNameInOrderByNameAsc(NatureOfComplaintConstants.VALID_NATURE_NAMES)
-                .stream()
-                .map(nature -> new NatureOptionDTO(
-                        nature.getId(),
-                        nature.getName()
-                ))
-                .toList();
-    }
-
 
 
     @Transactional(readOnly = true)
     public FtrSummaryStatsDTO getFtrDashboardStats(User officer) {
-        // Kumuha lang ng isang ID (Blotter ID 3)
         Long deptId = officer.getAllowedDepartments().stream()
                 .findFirst()
                 .map(Department::getId)
@@ -286,7 +274,7 @@ public class BlotterService {
                         t.getTitle(),
                         t.getDescription(),
                         t.getPerformedBy() != null ?
-                                t.getPerformedBy().getFirstName() + " " + t.getPerformedBy().getLastName() : "System",
+                                t.getPerformedBy().getPerson().getFirstName() + " " + t.getPerformedBy().getPerson().getLastName() : "System",
                         t.getEventDate()
                 ))
                 .collect(Collectors.toList());

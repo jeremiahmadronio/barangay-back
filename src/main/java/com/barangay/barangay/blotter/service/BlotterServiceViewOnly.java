@@ -14,8 +14,8 @@ import com.barangay.barangay.department.model.Department;
 import com.barangay.barangay.enumerated.CaseStatus;
 import com.barangay.barangay.enumerated.CaseType;
 import com.barangay.barangay.lupon.repository.PangkatCompositionRepository;
-import com.barangay.barangay.resident.model.People;
-import com.barangay.barangay.resident.repository.WitnessRepository;
+import com.barangay.barangay.person.model.Person;
+import com.barangay.barangay.person.repository.WitnessRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -42,7 +42,6 @@ public class BlotterServiceViewOnly {
     private final HearingRepository  hearingRepository;
     private final HearingMinutesRepository hearingMinutesRepository;
     private final CaseNoteRepository caseNoteRepository;
-    private final IncidentFrequencyRepository incidentFrequencyRepository;
     private final PangkatCompositionRepository pangkatCompositionRepository;
 
 
@@ -92,13 +91,13 @@ public class BlotterServiceViewOnly {
                 .map(er -> er.getType().getTypeName())
                 .toList();
 
-        String officerName = (bc.getReceivingOfficer() != null)
-                ? bc.getReceivingOfficer().getFirstName() + " " + bc.getReceivingOfficer().getLastName()
+        String officerName = (bc.getCreatedBy() != null)
+                ? bc.getCreatedBy().getPerson().getFirstName() + " " + bc.getCreatedBy().getPerson().getLastName()
                 : "Unassigned / System Generated";
 
 
-        String relationshipName = (bc.getRespondent() != null && bc.getRespondent().getRelationshipType() != null)
-                ? bc.getRespondent().getRelationshipType().getName()
+        String relationshipName = (bc.getRespondent() != null && bc.getRespondent().getRelationshipToComplainant() != null)
+                ? bc.getRespondent().getRelationshipToComplainant()
                 : "N/A";
 
         return new BlotterRecordViewDTO(
@@ -118,7 +117,7 @@ public class BlotterServiceViewOnly {
                 bc.getRespondent().getPerson().getContactNumber(),
                 relationshipName,
                 bc.getRespondent().getPerson().getCompleteAddress(),
-                bc.getIncidentDetail().getNatureOfComplaint().getName(),
+                bc.getIncidentDetail().getNatureOfComplaint(),
                 bc.getIncidentDetail().getDateOfIncident(),
                 bc.getIncidentDetail().getTimeOfIncident(),
                 bc.getIncidentDetail().getPlaceOfIncident(),
@@ -178,7 +177,7 @@ public class BlotterServiceViewOnly {
                 : "N/A";
 
         String nature = (bc.getIncidentDetail() != null && bc.getIncidentDetail().getNatureOfComplaint() != null)
-                ? bc.getIncidentDetail().getNatureOfComplaint().getName()
+                ? bc.getIncidentDetail().getNatureOfComplaint()
                 : "General Record";
 
         return new BlotterSummaryDTO(
@@ -215,7 +214,7 @@ public class BlotterServiceViewOnly {
 
         List<WitnessDTO> witnesses = witnessRepository.findAllByBlotterCase(bc).stream()
                 .map(w -> {
-                    People p = w.getPerson();
+                    Person p = w.getPerson();
                     String fullName = (p != null) ? p.getFirstName() + " " + p.getLastName() : "Anonymous Witness";
                     String contact = (p != null && p.getContactNumber() != null) ? p.getContactNumber() : "N/A";
                     String address = (p != null && p.getCompleteAddress() != null) ? p.getCompleteAddress() : "N/A";
@@ -270,16 +269,16 @@ public class BlotterServiceViewOnly {
                 bc.getRespondent().getPerson().getBirthDate(), // LocalDate can be null
                 bc.getRespondent().getPerson().getCivilStatus(),
                 bc.getRespondent().getPerson().getOccupation(),
-                (bc.getRespondent().getRelationshipType() != null) ? bc.getRespondent().getRelationshipType().getName() : "Others/Unknown",
+                (bc.getRespondent().getRelationshipToComplainant() != null) ? bc.getRespondent().getRelationshipToComplainant() : "Others/Unknown",
                 (bc.getRespondent().getPerson().getCompleteAddress() != null) ? bc.getRespondent().getPerson().getCompleteAddress() : "N/A",
                 (bc.getRespondent().getLivingWithComplainant() != null) ? bc.getRespondent().getLivingWithComplainant() : false,
 
                 // --- Incident Details (Protected against missing data) ---
-                (bc.getIncidentDetail().getNatureOfComplaint() != null) ? bc.getIncidentDetail().getNatureOfComplaint().getName() : "Uncategorized",
+                (bc.getIncidentDetail().getNatureOfComplaint() != null) ? bc.getIncidentDetail().getNatureOfComplaint() : "Uncategorized",
                 bc.getIncidentDetail().getDateOfIncident(),
                 bc.getIncidentDetail().getTimeOfIncident(),
                 bc.getIncidentDetail().getPlaceOfIncident(),
-                (bc.getIncidentDetail().getFrequency() != null) ? bc.getIncidentDetail().getFrequency().getLabel() : "First Time",
+                (bc.getIncidentDetail().getFrequency() != null) ? bc.getIncidentDetail().getFrequency() : "First Time",
                 (bc.getIncidentDetail().getInjuriesDamagesDescription() != null) ? bc.getIncidentDetail().getInjuriesDamagesDescription() : "None reported",
 
                 (bc.getNarrativeStatement() != null) ? bc.getNarrativeStatement().getStatement() : "No narrative statement provided.",
@@ -370,7 +369,7 @@ public class BlotterServiceViewOnly {
                         h.getScheduledEnd().toLocalTime().format(timeFormatter),
                         h.getBlotterCase().getBlotterNumber(),
                         h.getBlotterCase().getIncidentDetail().getNatureOfComplaint() != null
-                                ? h.getBlotterCase().getIncidentDetail().getNatureOfComplaint().getName()
+                                ? h.getBlotterCase().getIncidentDetail().getNatureOfComplaint()
                                 : "N/A"
                 )).toList();
     }
@@ -447,7 +446,7 @@ public class BlotterServiceViewOnly {
                 .map(note -> new CaseNoteViewDTO(
                         note.getId(),
                         note.getNote(),
-                        note.getCreatedBy().getFirstName() + " " + note.getCreatedBy().getLastName(),
+                        note.getCreatedBy().getPerson().getFirstName() + " " + note.getCreatedBy().getPerson().getLastName(),
                         note.getCreatedAt()
                 ))
                 .toList();
@@ -488,7 +487,4 @@ public class BlotterServiceViewOnly {
 
 
 
-    public List<IncidentFrequencyDTO> getFrequencyOptions() {
-        return incidentFrequencyRepository.getDropdownOptions();
-    }
 }

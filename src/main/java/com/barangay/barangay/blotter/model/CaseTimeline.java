@@ -25,21 +25,21 @@ public class CaseTimeline {
     private BlotterCase blotterCase;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false , name = "timeline_type")
     private TimelineEventType eventType;
 
 
-    @Column(length = 255, nullable = false)
+    @Column(length = 255, nullable = false, name = "title")
     private String title;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT", name = "description")
     private String description;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "performed_by")
+    @JoinColumn(name = "created_by")
     private User performedBy;
 
     @CreationTimestamp
-    @Column(updatable = false, nullable = false)
+    @Column(updatable = false, nullable = false, name = "event_date")
     private LocalDateTime eventDate;
 }

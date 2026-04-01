@@ -77,22 +77,23 @@ public interface UserManagementRepository extends JpaRepository<User, UUID> {
 
 
     @Query("""
-    SELECT DISTINCT u FROM User u
-    JOIN u.allowedDepartments d
-    LEFT JOIN u.role r
-    WHERE d.id IN :deptIds
-    AND u.id != :currentUserId 
-    AND r.roleName NOT IN :excludedRoles 
-    AND (:search IS NULL OR 
-         LOWER(CAST(u.firstName AS string)) LIKE :search OR 
-         LOWER(CAST(u.lastName AS string)) LIKE :search OR 
-         LOWER(CAST(u.email AS string)) LIKE :search)
-    AND (:roleName IS NULL OR LOWER(r.roleName) = :roleName)
-    AND (:deptName IS NULL OR LOWER(d.name) = :deptName)
-""")
+        SELECT DISTINCT u FROM User u
+        JOIN u.person p
+        JOIN u.allowedDepartments d
+        LEFT JOIN u.role r
+        WHERE d.id IN :deptIds
+        AND u.id != :currentUserId
+        AND r.roleName NOT IN :excludedRoles
+        AND (:search IS NULL OR 
+             p.firstName ILIKE :search OR 
+             p.lastName ILIKE :search OR 
+             u.systemEmail ILIKE :search)
+        AND (:roleName IS NULL OR r.roleName ILIKE :roleName)
+        AND (:deptName IS NULL OR d.name ILIKE :deptName)
+    """)
     Page<User> findStaffByFilters(
             @Param("deptIds") Set<Long> deptIds,
-            @Param("currentUserId") UUID currentUserId, // Idinagdag ito
+            @Param("currentUserId") UUID currentUserId,
             @Param("excludedRoles") List<String> excludedRoles,
             @Param("search") String search,
             @Param("roleName") String roleName,

@@ -60,34 +60,49 @@ public interface AuditLogRepository extends JpaRepository<AuditLog,Long>  {
 
     @Query("""
         SELECT new com.barangay.barangay.admin_management.dto.RecentSystemAction(
-            a.user.firstName,
-            a.user.lastName,
+            p.firstName,
+            p.lastName,
             CAST(a.severity AS string),
             a.actionTaken,
             a.module,
             a.createdAt
         )
         FROM AuditLog a
+            JOIN a.user u
+            JOIN u.person p
         ORDER BY a.createdAt DESC
         LIMIT 5
     """)
     List<RecentSystemAction> findTop5RecentActions();
 
 
-    @Query("""
-    SELECT a FROM AuditLog a
-    LEFT JOIN a.user u
-    WHERE (:search IS NULL OR
-              LOWER(u.firstName)  LIKE :search OR
-              LOWER(u.lastName)   LIKE :search OR
-              LOWER(a.reason)     LIKE :search OR
-              LOWER(a.ipAddress)  LIKE :search)
-      AND (:severity IS NULL OR CAST(a.severity AS string) = :severity)
-      AND (:module   IS NULL OR a.module      = :module)
-      AND (:action   IS NULL OR a.actionTaken = :action)
-      AND (CAST(:startDate AS localdatetime) IS NULL OR a.createdAt >= :startDate)
-      AND (CAST(:endDate AS localdatetime)   IS NULL OR a.createdAt <= :endDate)
-    """)
+    @Query(value = """
+    SELECT al.* FROM audit_logs al
+    LEFT JOIN users u ON u.id = al.user_id
+    LEFT JOIN person p ON p.id = u.person_id
+    WHERE (CAST(:search AS text) IS NULL OR (
+          p.first_name ILIKE CONCAT('%', CAST(:search AS text), '%') OR 
+          p.last_name ILIKE CONCAT('%', CAST(:search AS text), '%') OR 
+          al.reason ILIKE CONCAT('%', CAST(:search AS text), '%') OR
+          al.ip_address ILIKE CONCAT('%', CAST(:search AS text), '%')
+    ))
+    AND (CAST(:severity AS text) IS NULL OR al.severity = :severity)
+    AND (CAST(:module AS text) IS NULL OR al.module = :module)
+    AND (CAST(:action AS text) IS NULL OR al.action_taken = :action)
+    AND (CAST(:startDate AS timestamp) IS NULL OR al.created_at >= :startDate)
+    AND (CAST(:endDate AS timestamp) IS NULL OR al.created_at <= :endDate)
+""",
+            countQuery = """
+    SELECT COUNT(*) FROM audit_logs al
+    LEFT JOIN users u ON u.id = al.user_id
+    LEFT JOIN person p ON p.id = u.person_id
+    WHERE (CAST(:search AS text) IS NULL OR (
+          p.first_name ILIKE CONCAT('%', CAST(:search AS text), '%') OR 
+          p.last_name ILIKE CONCAT('%', CAST(:search AS text), '%') OR 
+          al.reason ILIKE CONCAT('%', CAST(:search AS text), '%')
+    ))
+    AND (CAST(:severity AS text) IS NULL OR al.severity = :severity)
+""", nativeQuery = true)
     Page<AuditLog> findAllFiltered(
             @Param("search")    String search,
             @Param("severity")  String severity,

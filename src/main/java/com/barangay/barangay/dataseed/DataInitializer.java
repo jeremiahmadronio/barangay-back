@@ -2,18 +2,17 @@ package com.barangay.barangay.dataseed;
 
 import com.barangay.barangay.audit.model.AuditLog;
 import com.barangay.barangay.audit.repository.AuditLogRepository;
-import com.barangay.barangay.blotter.model.*;
 import com.barangay.barangay.blotter.model.EvidenceType;
 import com.barangay.barangay.blotter.repository.*;
 import com.barangay.barangay.department.model.Department;
+import com.barangay.barangay.employee.model.Employee;
 import com.barangay.barangay.enumerated.*;
-import com.barangay.barangay.lupon.model.PangkatComposition;
 import com.barangay.barangay.lupon.repository.PangkatCompositionRepository;
 import com.barangay.barangay.permission.model.Permission;
-import com.barangay.barangay.resident.model.*;
-import com.barangay.barangay.resident.repository.EmployeeRepository;
-import com.barangay.barangay.resident.repository.PeopleRepository;
-import com.barangay.barangay.resident.repository.ResidentRepository;
+import com.barangay.barangay.person.model.*;
+import com.barangay.barangay.employee.repository.EmployeeRepository;
+import com.barangay.barangay.person.repository.PersonRepository;
+import com.barangay.barangay.person.repository.ResidentRepository;
 import com.barangay.barangay.role.model.Role;
 import com.barangay.barangay.admin_management.model.User;
 import com.barangay.barangay.department.repository.DepartmentRepository;
@@ -29,7 +28,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -46,14 +44,11 @@ public class DataInitializer implements CommandLineRunner {
     private final PasswordEncoder passwordEncoder;
 
     //blotter
-    private final NatureOfComplaintRepository natureOfComplaintRepository;
-    private final RelationshipTypeRepository relationshipTypeRepository;
-    private final IncidentFrequencyRepository incidentFrequencyRepository;
     private final EvidenceTypeRepository evidenceTypeRepository;
 
     private final PangkatCompositionRepository pangkatCompositionRepository;
 
-    private final PeopleRepository peopleRepository;
+    private final PersonRepository personRepository;
     private final ResidentRepository residentRepository;
     private final EmployeeRepository employeeRepository;
 
@@ -64,6 +59,17 @@ public class DataInitializer implements CommandLineRunner {
     @Transactional
     public void run(String... args) {
 
+
+        Department adminDept = createDeptIfNotFound("ADMINISTRATION");
+        createDeptIfNotFound("VAWC");
+        createDeptIfNotFound("BLOTTER");
+        createDeptIfNotFound("KAPITANA");
+        createDeptIfNotFound("BCPC");
+        createDeptIfNotFound("CLEARANCE");
+        createDeptIfNotFound("LUPONG_TAGAPAMAYAPA"); // Ito yung hinahanap ng seedLuponEmployees
+        createDeptIfNotFound("OPERATIONAL_STAFF");
+        createDeptIfNotFound("FTJS");
+        createDeptIfNotFound("ROOT_ADMIN");
 
 
         if (residentRepository.count() == 0) {
@@ -78,18 +84,7 @@ public class DataInitializer implements CommandLineRunner {
 
 
 
-        // ── Departments ──────────────────────────────────────────────────────
-        Department adminDept = createDeptIfNotFound("ADMINISTRATION");
-        createDeptIfNotFound("VAWC");
-        createDeptIfNotFound("BLOTTER");
-        createDeptIfNotFound("KAPITANA");
-        createDeptIfNotFound("BCPC");
-        createDeptIfNotFound("CLEARANCE");
-        createDeptIfNotFound("LUPONG_TAGAPAMAYAPA");
-        createDeptIfNotFound("OPERATIONAL_STAFF");
-        createDeptIfNotFound("FTJS");
-        createDeptIfNotFound("ROOT_ADMIN");
-        createDeptIfNotFound("CONTENT");
+
 
         // ── Permissions ──────────────────────────────────────────────────────
 
@@ -146,37 +141,13 @@ public class DataInitializer implements CommandLineRunner {
 
         createEvidenceTypeIfNotFound("Other Supporting Documents/Items");
 
-        createNatureIfNotFound("Physical Injury");
-        createNatureIfNotFound("Slander / Oral Defamation");
-        createNatureIfNotFound("Theft");
-        createNatureIfNotFound("Threats");
-        createNatureIfNotFound("Trespassing");
-        createNatureIfNotFound("Grave Coercion");
-        createNatureIfNotFound("Debt / Financial Dispute");
-        createNatureIfNotFound("Unjust Vexation");
-        createNatureIfNotFound("Boundary / Land Dispute");
-        createNatureIfNotFound("Family / Relational Dispute");
-        createNatureIfNotFound("Noise Nuisance (Videoke, Loud Music)");
-        createNatureIfNotFound("Animal Nuisance (Stray/Noise/Waste)");
-        createNatureIfNotFound("Public Disturbance / Scandal");
-        createNatureIfNotFound("Illegal Parking / Obstruction");
-        createNatureIfNotFound("Violation of Barangay Ordinance");
-        createNatureIfNotFound("Others (Specify in Narrative)");
+
 
 
         // ── Relationship Types (Reference Data) ──────────────────────────────
-        createRelationIfNotFound("Neighbor");
-        createRelationIfNotFound("Relative");
-        createRelationIfNotFound("Family Member");
-        createRelationIfNotFound("Business Partner");
-        createRelationIfNotFound("Former Spouse / Partner");
-        createRelationIfNotFound("Stranger");
-        createRelationIfNotFound("Landlord / Tenant");
 
-        // ── Incident Frequencies (Reference Data) ────────────────────────────
-        createFrequencyIfNotFound("First Time");
-        createFrequencyIfNotFound("Second Time");
-        createFrequencyIfNotFound("Habitual / Third Time+");
+
+
 
         // ── Roles ────────────────────────────────────────────────────────────
         Role rootRole = roleRepository.findByRoleName("ROOT_ADMIN")
@@ -195,12 +166,18 @@ public class DataInitializer implements CommandLineRunner {
 
         User rootUser = userRepository.findByUsername("rootadmin")
                 .orElseGet(() -> {
+
+                    Person person = new Person();
+                    person.setFirstName("Juan");
+                    person.setLastName("Dela Cruz");
+                    person = personRepository.save(person);
+
+
                     User root = new User();
                     root.setUsername("rootadmin");
                     root.setPassword(hashedContext);
-                    root.setEmail("nermamadronio@gmail.com");
-                    root.setFirstName("Juan");
-                    root.setLastName("Dela Cruz");
+                    root.setSystemEmail("nermamadronio@gmail.com");
+                    root.setPerson(person);
                     root.setStatus(Status.ACTIVE);
                     root.setRole(rootRole);
                     root.setAllowedDepartments(new HashSet<>(Set.of(adminDept)));
@@ -266,23 +243,23 @@ public class DataInitializer implements CommandLineRunner {
             String lastName = name[0];
             String firstName = name[1];
 
-            if (!peopleRepository.existsByFirstNameAndLastName(firstName, lastName)) {
-                People p = new People();
+            if (!personRepository.existsByFirstNameAndLastName(firstName, lastName)) {
+                Person p = new Person();
                 p.setFirstName(firstName);
                 p.setLastName(lastName);
                 p.setGender("Male");
                 p.setCivilStatus("Married");
                 p.setIsResident(true);
                 p.setCompleteAddress("3s Katipunan Brgy Ugong Valenzuela City  ");
+                p.setOccupation("Barangay Official");
                 p.setContactNumber("09" + (100000000 + new Random().nextInt(900000000)));
 
                 // I-save sa People table
-                People savedPerson = peopleRepository.save(p);
+                Person savedPerson = personRepository.save(p);
 
                 Resident r = new Resident();
                 r.setPerson(savedPerson);
                 r.setBarangayIdNumber("LUPON-" + UUID.randomUUID().toString().substring(0, 5).toUpperCase());
-                r.setOccupation("Barangay Official");
                 r.setCitizenship("Filipino");
                 residentRepository.save(r);
             }
@@ -318,16 +295,15 @@ public class DataInitializer implements CommandLineRunner {
             String firstName = data[1];
             String position = data[2];
 
-            // 3. Hanapin o Gawa ng People record (Identity)
-            People person = peopleRepository.findByFirstNameAndLastName(firstName, lastName)
+            Person person = personRepository.findByFirstNameAndLastName(firstName, lastName)
                     .orElseGet(() -> {
-                        People p = new People();
+                        Person p = new Person();
                         p.setFirstName(firstName);
                         p.setLastName(lastName);
                         p.setIsResident(true);
                         p.setCompleteAddress("Brgy. Ugong, Valenzuela City");
                         p.setGender("Male");
-                        return peopleRepository.save(p);
+                        return personRepository.save(p);
                     });
 
             // 4. DITO ANG IMPORTANTE: Link the Person to the Employee Table
@@ -374,7 +350,6 @@ public class DataInitializer implements CommandLineRunner {
      * Seeds historical logs with a backdated created_at timestamp.
      */
     private void seedHistoricalLogs(User actor, int count) {
-        // Use ROOT_ADMIN as the department for historical/system-generated logs
         Departments dept = Departments.ROOT_ADMIN;
         LocalDateTime lastMonth = LocalDateTime.now().minusMonths(1).minusDays(5);
 
@@ -434,31 +409,12 @@ public class DataInitializer implements CommandLineRunner {
         }
     }
 
-    private void createNatureIfNotFound(String name) {
-        if (natureOfComplaintRepository.findByName(name).isEmpty()) {
-            NatureOfComplaint nature = new NatureOfComplaint();
-            nature.setName(name);
-            natureOfComplaintRepository.save(nature);
-        }
-    }
-
-    private void createRelationIfNotFound(String name) {
-        if (relationshipTypeRepository.findByName(name).isEmpty()) {
-            RelationshipType type = new RelationshipType();
-            type.setName(name);
-            relationshipTypeRepository.save(type);
-        }
-    }
 
 
 
-    private void createFrequencyIfNotFound(String label) {
-        if (incidentFrequencyRepository.findByLabel(label).isEmpty()) {
-            IncidentFrequency freq = new IncidentFrequency();
-            freq.setLabel(label);
-            incidentFrequencyRepository.save(freq);
-        }
-    }
+
+
+
 
     private void createEvidenceTypeIfNotFound(String name) {
         if (evidenceTypeRepository.findByTypeName(name).isEmpty()) {
@@ -477,13 +433,13 @@ public class DataInitializer implements CommandLineRunner {
         String[] genders = {"Male", "Female"};
         String[] civilStatuses = {"Single", "Married", "Widowed", "Separated"};
 
-        List<People> peopleList = new ArrayList<>();
+        List<Person> peopleList = new ArrayList<>();
         Random random = new Random();
 
         System.out.println("Seeding 100 Filipino Residents...");
 
         for (int i = 0; i < count; i++) {
-            People person = new People();
+            Person person = new Person();
             person.setFirstName(firstNames[random.nextInt(firstNames.length)]);
             person.setLastName(lastNames[random.nextInt(lastNames.length)]);
             person.setMiddleName(lastNames[random.nextInt(lastNames.length)]);
@@ -492,6 +448,7 @@ public class DataInitializer implements CommandLineRunner {
             person.setContactNumber("09" + (100000000 + random.nextInt(900000000)));
             person.setCompleteAddress("Bgy. Novaliches, Quezon City, Metro Manila");
             person.setIsResident(true);
+
             person.setEmail(person.getFirstName().toLowerCase() + i + "@example.com");
 
             // Logic para sa Age at BirthDate
@@ -504,10 +461,11 @@ public class DataInitializer implements CommandLineRunner {
                 age = 18 + random.nextInt(42);
             }
             person.setAge((short) age);
+            person.setOccupation(age >= 60 ? "Retired" : "Employee");
             person.setBirthDate(LocalDate.now().minusYears(age).minusDays(random.nextInt(365)));
 
             // I-save muna ang People (Master)
-            People savedPerson = peopleRepository.save(person);
+            Person savedPerson = personRepository.save(person);
 
             // Gawa ng Resident Profile
             Resident resident = new Resident();
@@ -516,13 +474,10 @@ public class DataInitializer implements CommandLineRunner {
             resident.setHouseholdNumber("HH-" + (1000 + random.nextInt(9000)));
             resident.setPrecinctNumber("PR-" + (100 + random.nextInt(900)));
 
-            // Logic: Lahat ng senior ay voter, 80% ng adults ay voter
             resident.setIsVoter(age >= 60 || random.nextDouble() < 0.8);
 
-            // 25% chance na maging Head of Family
             resident.setIsHeadOfFamily(random.nextDouble() < 0.25);
 
-            resident.setOccupation(age >= 60 ? "Retired" : "Employee");
             resident.setCitizenship("Filipino");
             resident.setDateOfResidency(LocalDate.now().minusYears(random.nextInt(10)));
 

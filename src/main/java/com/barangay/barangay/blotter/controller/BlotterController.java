@@ -171,10 +171,7 @@ public class BlotterController {
     }
 
 
-    @GetMapping("/nature-of-complaint-options")
-    public ResponseEntity<List<NatureOptionDTO>> getNatureOptions() {
-        return ResponseEntity.ok(blotterService.getNatureOptions());
-    }
+
 
 
     @PutMapping("/update-case-status")
@@ -200,12 +197,6 @@ public class BlotterController {
             @AuthenticationPrincipal CustomUserDetails userDetails
     ){
         return ResponseEntity.ok(blotterService.getFtrDashboardStats(userDetails.user()));
-    }
-
-
-    @GetMapping("/frequencies")
-    public ResponseEntity<List<IncidentFrequencyDTO>> getFrequencies() {
-        return ResponseEntity.ok(blotterServiceViewOnly.getFrequencyOptions());
     }
 
 

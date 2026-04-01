@@ -73,7 +73,7 @@ public class AuditLogService {
             LocalDate startDate, LocalDate endDate,
             int page, int size
     ) {
-        String searchParam   = (search == null || search.isBlank()) ? null : "%" + search.toLowerCase() + "%";
+        String searchParam   = (search == null || search.isBlank()) ? null : search.trim();
         String severityParam = blankToNull(severity);
         String moduleParam   = blankToNull(module);
         String actionParam   = blankToNull(action);
@@ -81,7 +81,7 @@ public class AuditLogService {
         LocalDateTime startDateTime = (startDate != null) ? startDate.atStartOfDay() : null;
         LocalDateTime endDateTime   = (endDate   != null) ? endDate.atTime(LocalTime.MAX) : null;
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "created_at"));
 
         return auditLogRepository
                 .findAllFiltered(
@@ -106,8 +106,8 @@ public class AuditLogService {
     }
 
     private AuditTable toTable(AuditLog log) {
-        String firstName = log.getUser() != null ? log.getUser().getFirstName() : null;
-        String lastName  = log.getUser() != null ? log.getUser().getLastName()  : null;
+        String firstName = log.getUser() != null ? log.getUser().getPerson().getFirstName() : null;
+        String lastName  = log.getUser() != null ? log.getUser().getPerson().getLastName()  : null;
         String roleName  = (log.getUser() != null && log.getUser().getRole() != null)
                 ? log.getUser().getRole().getRoleName()
                 : null;
@@ -138,7 +138,7 @@ public class AuditLogService {
                 Severity.INFO,
                 "VIEW_AUDITS_RECORD",
                 ipAddress,
-                "Viewed details of Audit Log  " + actor.getFirstName() + " " + actor.getLastName()
+                "Viewed details of Audit Log  " + actor.getPerson().getFirstName() + " " + actor.getPerson().getLastName()
                 ,
                 null,
                 null
@@ -152,8 +152,8 @@ public class AuditLogService {
 
         return new AuditViewAll(
                 log.getId(),
-                user != null ? user.getFirstName() : null,
-                user != null ? user.getLastName()  : null,
+                user != null ? user.getPerson().getFirstName() : null,
+                user != null ? user.getPerson().getLastName()  : null,
                 (user != null && user.getRole() != null) ? user.getRole().getRoleName() : null,
                 log.getIpAddress(),
                 log.getModule(),

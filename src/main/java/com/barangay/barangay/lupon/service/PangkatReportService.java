@@ -148,7 +148,7 @@ public class PangkatReportService {
         dto.setParties(parties.toUpperCase());
 
         String natureName = (bc.getIncidentDetail() != null && bc.getIncidentDetail().getNatureOfComplaint() != null)
-                ? bc.getIncidentDetail().getNatureOfComplaint().getName()
+                ? bc.getIncidentDetail().getNatureOfComplaint()
                 : "OTHERS";
         dto.setComplaint(natureName);
 
@@ -182,7 +182,7 @@ public class PangkatReportService {
 
     private void mapResolutionStatus(BlotterCase bc, LuponMonthlyReportDTO dto) {
         if (bc.getStatus() == CaseStatus.SETTLED) {
-            if (bc.getExtensionCount() == 0) dto.setMediation(1); // Barangay Captain level
+            if (bc.getLuponReferral().getExtensionCount() == 0) dto.setMediation(1); // Barangay Captain level
             else dto.setConciliation(1); // Pangkat level
         }
         else if (bc.getStatus() == CaseStatus.CERTIFIED_TO_FILE_ACTION) {

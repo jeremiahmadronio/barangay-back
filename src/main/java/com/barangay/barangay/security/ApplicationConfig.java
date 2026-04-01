@@ -23,7 +23,7 @@ public class ApplicationConfig {
     // check if email is existing
     @Bean
     public UserDetailsService userDetailsService() {
-        return email -> userRepository.findByEmail(email)
+        return email -> userRepository.findBySystemEmail(email)
                 .map(CustomUserDetails::new)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
     }
