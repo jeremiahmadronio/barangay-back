@@ -2,6 +2,7 @@ package com.barangay.barangay.blotter.model;
 
 import com.barangay.barangay.admin_management.model.User;
 import com.barangay.barangay.department.model.Department;
+import com.barangay.barangay.employee.model.Employee;
 import com.barangay.barangay.enumerated.CaseStatus;
 import com.barangay.barangay.enumerated.CaseType;
 import com.barangay.barangay.lupon.model.PangkatCFA;
@@ -83,6 +84,10 @@ public class BlotterCase {
     @JoinColumn(name = "case_filed_by")
     private User createdBy;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "case_assign_to")
+    private Employee employee;
+
     @CreationTimestamp
     @Column(name = "case_filed_at", updatable = false , nullable = false)
     private LocalDateTime dateFiled;
@@ -100,6 +105,8 @@ public class BlotterCase {
 
     @OneToOne(mappedBy = "blotterCase", cascade = CascadeType.ALL)
     private LuponReferral luponReferral;
+
+
 
 
 

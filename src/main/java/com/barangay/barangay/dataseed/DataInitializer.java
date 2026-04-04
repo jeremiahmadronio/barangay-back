@@ -19,6 +19,8 @@ import com.barangay.barangay.department.repository.DepartmentRepository;
 import com.barangay.barangay.permission.repository.PermissionRepository;
 import com.barangay.barangay.role.repository.RoleRepository;
 import com.barangay.barangay.admin_management.repository.Root_AdminRepository;
+import com.barangay.barangay.vawc.model.ViolenceType;
+import com.barangay.barangay.vawc.repository.ViolenceTypeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -51,6 +53,7 @@ public class DataInitializer implements CommandLineRunner {
     private final PersonRepository personRepository;
     private final ResidentRepository residentRepository;
     private final EmployeeRepository employeeRepository;
+    private final ViolenceTypeRepository violenceTypeRepository;
 
 
 
@@ -142,6 +145,23 @@ public class DataInitializer implements CommandLineRunner {
         createEvidenceTypeIfNotFound("Other Supporting Documents/Items");
 
 
+
+        // ── VAWC Violence Types (RA 9262) ────────────────────────────────────
+        // ── VAWC (RA 9262) Specifics ──────────────────────────────────────────
+        createViolenceTypeIfNotFound(" PHYSICAL VIOLENCE", "Bodily or physical harm such as battery, assault, or physical maltreatment.");
+        createViolenceTypeIfNotFound(" SEXUAL VIOLENCE", "Acts sexual in nature, including rape, sexual harassment, or forced sexual acts.");
+        createViolenceTypeIfNotFound(" PSYCHOLOGICAL VIOLENCE", "Mental or emotional suffering, intimidation, stalking, or public ridicule.");
+        createViolenceTypeIfNotFound(" ECONOMIC ABUSE", "Financial dependency, withdrawal of support, or controlling the victim's own money.");
+
+// ── BCPC / CHILD ABUSE (RA 7610) Specifics ────────────────────────────
+        createViolenceTypeIfNotFound(" CHILD ABUSE", "Physical, psychological, or sexual maltreatment of a minor (under 18).");
+        createViolenceTypeIfNotFound(" NEGLECT", "Failure to provide basic needs like food, education, medical care, or abandonment.");
+        createViolenceTypeIfNotFound(" CHILD LABOR", "Exploitation of children in harmful work or long hours that interfere with education.");
+        createViolenceTypeIfNotFound("TRAFFICKING", "Recruitment or transport of children for exploitation or illegal acts.");
+        createViolenceTypeIfNotFound(" CYBER-VIOLENCE / OSAEC", "Online sexual abuse of children, cyber-grooming, or sharing of sensitive materials.");
+
+// ── OTHERS ────────────────────────────────────────────────────────────
+        createViolenceTypeIfNotFound("OTHERS", "Other forms of violence or abuse not specifically categorized above.");
 
 
         // ── Relationship Types (Reference Data) ──────────────────────────────
@@ -410,6 +430,16 @@ public class DataInitializer implements CommandLineRunner {
     }
 
 
+    private void createViolenceTypeIfNotFound(String name, String description) {
+        if (violenceTypeRepository.findByName(name).isEmpty()) {
+            ViolenceType type = new ViolenceType();
+            type.setName(name);
+            type.setDescription(description);
+            violenceTypeRepository.save(type);
+            System.out.println("[VIOLENCE TYPE SEEDED] " + name);
+        }
+    }
+
 
 
 
@@ -428,62 +458,202 @@ public class DataInitializer implements CommandLineRunner {
 
 
     private void seedResidents(int count) {
-        String[] firstNames = {"Juan", "Maria", "Jose", "Elena", "Ricardo", "Gloria", "Roberto", "Teresa", "Fernando", "Imelda", "Francisco", "Lourdes", "Antonio", "Corazon", "Jaime", "Remedios", "Benjamin", "Carmelita", "Rodolfo", "Dolores"};
-        String[] lastNames = {"Dela Cruz", "Garcia", "Reyes", "Ramos", "Mendoza", "Santos", "Flores", "Gonzales", "Bautista", "Villanueva", "Fernandez", "Cruz", "Lopez", "Castillo", "Gomez", "Pineda", "Madronio", "De Leon", "Mercado", "Rivera"};
+        String[] firstNames = {
+                // Classic Male
+                "Juan", "Jose", "Ricardo", "Roberto", "Fernando", "Francisco", "Antonio", "Jaime",
+                "Benjamin", "Rodolfo", "Eduardo", "Manuel", "Ramon", "Ernesto", "Alfredo", "Domingo",
+                "Renato", "Rodrigo", "Danilo", "Virgilio", "Armando", "Leonidas", "Crisanto", "Marcelo",
+                "Conrado", "Wilfredo", "Rolando", "Edmundo", "Teodoro", "Gervacio", "Nestor", "Efren",
+                "Gregorio", "Isidro", "Lorenzo", "Maximo", "Narciso", "Onofre", "Pascual", "Quintin",
+                "Silverio", "Tomas", "Urbano", "Vicente", "Wenceslao", "Bernardo", "Cesar", "Diego",
+                "Enrique", "Felipe", "Gilberto", "Hernan", "Ignacio", "Julio", "Mariano", "Oscar",
+                "Pablo", "Rafael", "Amado", "Brigido", "Candido", "Diosdado", "Eusebio", "Faustino",
+                "Gavino", "Hilarion", "Iluminado", "Juanito", "Ladislao", "Melanio", "Nicanor",
+                "Olimpio", "Primitivo", "Restituto", "Saturnino", "Tiburcio", "Uldarico", "Vitaliano",
+                "Zosimo", "Avelino", "Baldomero", "Casimiro", "Dalmacio", "Estanislao", "Fulgencio",
+                "Gaudencio", "Hilario", "Ireneo", "Jacinto", "Lamberto", "Macedonio", "Nemesio",
+                // Modern Male
+                "Elmer", "Noel", "Rodel", "Arnel", "Jayson", "Mark", "Kevin", "Christian", "John",
+                "Michael", "Carlo", "Angelo", "Patrick", "Jomar", "Dario", "Karl", "Bryan", "Ryan",
+                "Nathan", "Aaron", "Adrian", "Alex", "Allen", "Arnold", "Arvin", "Benjo", "Bonn",
+                "Cardo", "Chito", "Dante", "Dennis", "Dodong", "Edwin", "Eric", "Felix", "Gene",
+                "Gerald", "Glen", "Harold", "Ivan", "Jeric", "Jerome", "Jobert", "Joel", "Joey",
+                "Jonathan", "Jonjon", "Joshua", "Kenneth", "Lando", "Leo", "Leonard", "Lester",
+                "Lloyd", "Louie", "Luke", "Marlon", "Martin", "Melvin", "Miguel", "Mike", "Myke",
+                "Nelson", "Nino", "Norman", "Oliver", "Orly", "Peter", "Philip", "Randy", "Ray",
+                "Rene", "Rex", "Rey", "Richard", "Ronnie", "Roy", "Rudy", "Sam", "Sammy", "Sean",
+                "Sherwin", "Sonny", "Steve", "Tirso", "Tony", "Vic", "Wendell", "Willy", "Wilson",
+                // Classic Female
+                "Maria", "Elena", "Gloria", "Teresa", "Imelda", "Lourdes", "Corazon", "Remedios",
+                "Carmelita", "Dolores", "Rosario", "Ligaya", "Perla", "Nenita", "Erlinda", "Felicitas",
+                "Herminia", "Irene", "Josefina", "Lorena", "Natividad", "Ofelia", "Salome", "Teresita",
+                "Ursula", "Yolanda", "Zenaida", "Esperanza", "Fe", "Gertrudes", "Isabelita",
+                "Leonora", "Noemi", "Ophelia", "Rosalinda", "Thelma", "Vilma", "Adelaida", "Belen",
+                "Cecilia", "Elisa", "Florencia", "Gina", "Hilda", "Ines", "Juanita", "Luz",
+                "Mercedes", "Nora", "Olivia", "Pilar", "Rita", "Soledad", "Trinidad", "Victoria",
+                "Amelia", "Basilisa", "Catalina", "Dominga", "Eufracia", "Felipa", "Generosa",
+                "Hipolita", "Incarnacion", "Juana", "Lorenza", "Marcelina", "Narcisa", "Olimpia",
+                "Perpetua", "Rafaela", "Segundina", "Timotea", "Valentina", "Wilhelmina", "Adora",
+                "Benita", "Conching", "Divina", "Estrella", "Fely", "Ging", "Heidi", "Imee",
+                // Modern Female
+                "Karen", "Kristine", "Patricia", "Marites", "Rowena", "Shirley", "Analiza",
+                "Bernadette", "Cristina", "Hazel", "Jennifer", "Maribel", "Daisy", "Gina", "Katrina",
+                "Alma", "Andrea", "Angel", "Anna", "April", "Araceli", "Arlyn", "Baby", "Bambi",
+                "Camille", "Carla", "Carmela", "Carol", "Charity", "Che", "Chelsea", "Cherry",
+                "Cynthia", "Donna", "Dorothy", "Edna", "Elaine", "Ellen", "Emily", "Emma",
+                "Evelyn", "Faith", "Fatima", "Fiona", "Flor", "Gigi", "Grace", "Hannah",
+                "Jackie", "Jade", "Jamie", "Jana", "Jasmine", "Jean", "Jessica", "Joanna",
+                "Joyce", "Julie", "Karina", "Kate", "Kathryn", "Lara", "Laura", "Leah",
+                "Linda", "Lisa", "Liza", "Lovely", "Lyn", "Lynda", "Mabel", "Mae", "Mara",
+                "Margaret", "Mary", "Megan", "Michelle", "Mila", "Mylene", "Nadia", "Nancy",
+                "Nicole", "Nina", "Pamela", "Pearl", "Princess", "Rachel", "Rebecca", "Regina",
+                "Rhea", "Rica", "Rina", "Rose", "Roxanne", "Ruby", "Ruth", "Sandra", "Sarah",
+                "Sharon", "Sofia", "Stella", "Susan", "Tina", "Vanessa", "Veronica", "Vicky",
+                "Vivian", "Wendy", "Xenia", "Yvonne", "Zara"
+        };
+
+        String[] lastNames = {
+                // Common Filipino
+                "Dela Cruz", "Garcia", "Reyes", "Ramos", "Mendoza", "Santos", "Flores", "Gonzales",
+                "Bautista", "Villanueva", "Fernandez", "Cruz", "Lopez", "Castillo", "Gomez", "Pineda",
+                "Madronio", "De Leon", "Mercado", "Rivera", "Torres", "Aquino", "Diaz", "Marquez",
+                "Soriano", "Santiago", "Espiritu", "Navarro", "Aguilar", "Pascual", "Morales", "Perez",
+                "Salazar", "Hidalgo", "Velasquez", "Ocampo", "Manalo", "Tolentino", "Magno", "Roxas",
+                "Manaloto", "Evangelista", "Delos Santos", "Buenaventura", "Paguirigan", "Camacho",
+                "Dela Torre", "Andres", "Espejo", "Ilagan", "Lacson", "Macaraeg", "Ordonez",
+                "Sabado", "Tablizo", "Umali", "Vergara", "Yabut", "Zabala", "Abalos", "Bacani",
+                "Cabrera", "Encarnacion", "Fajardo", "Galvez", "Hernandez", "Ibarra", "Jacinto",
+                "Kapunan", "Laurel", "Macapagal", "Natividad", "Obispo", "Padilla", "Roque",
+                "Suarez", "Tadeo", "Ureta", "Vargas", "Alcantara", "Baluyot", "Canlas", "Dayrit",
+                "Eugenio", "Fugoso", "Gatchalian", "Halili", "Jimenez", "Lacanilao", "Mabilog",
+                "Nograles", "Oreta", "Ponce", "Quimbo", "Ramirez", "Sotto", "Tiangco", "Valdez",
+                "Zubiri", "Ablaza", "Bagatsing", "Cayetano", "Defensor", "Estrada", "Fonacier",
+                "Guingona", "Honasan", "Imperial", "Jalandoni", "Katigbak", "Lazaro", "Madrigal",
+                "Nepomuceno", "Ongpin", "Palma", "Quezon", "Romualdez", "Sumulong", "Tupas",
+                "Unson", "Villar", "Wenceslao", "Yulo", "Zobel", "Araneta", "Benedicto", "Cojuangco",
+                "Durano", "Enrile", "Gaston", "Herrera", "Ituralde", "Jayme", "Kanlaon", "Llamas",
+                "Manotok", "Neri", "Ortigas", "Prieto", "Quirino", "Roces", "Soriquez", "Tinio",
+                // Chinese-Filipino
+                "Lim", "Tan", "Uy", "Sy", "Co", "Chua", "Ang", "Yu", "Go", "Dee",
+                "Dy", "King", "Lee", "Ong", "See", "Tiu", "Wong", "Yao", "Que", "Kho",
+                "Cu", "Dycaico", "Limcaoco", "Tancangco", "Uymatiao", "Syquia", "Cobankiat",
+                // Regional surnames
+                "Alvarado", "Batungbakal", "Calimag", "Dalisay", "Eulalio", "Formoso", "Gabieta",
+                "Hapitan", "Inigo", "Jagonap", "Katalbas", "Lumibao", "Magsino", "Narvasa",
+                "Oliva", "Palaganas", "Quizon", "Rafanan", "Saguin", "Talavera", "Ulep",
+                "Viray", "Wagas", "Yalong", "Zamudio", "Agpalo", "Balleza", "Calimlim",
+                "Dagdag", "Estepa", "Faminialagao", "Gabunada", "Hagad", "Ibarrientos",
+                "Jularbal", "Kahayon", "Lugtu", "Masangkay", "Nisperos", "Ondevilla",
+                "Pagaduan", "Quitain", "Ramiscal", "Sibayan", "Taguiwalo", "Udan", "Valmores"
+        };
+
         String[] genders = {"Male", "Female"};
         String[] civilStatuses = {"Single", "Married", "Widowed", "Separated"};
+        String[] bloodTypes = {"A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"};
+        String[] religions = {
+                "Roman Catholic", "Iglesia ni Cristo", "Born Again Christian", "Islam",
+                "Seventh-day Adventist", "Baptist", "Methodist", "Aglipayan", "Jehovah's Witness",
+                "Church of Christ", "Protestant"
+        };
+        String[] educationalAttainments = {
+                "Elementary Graduate", "High School Graduate", "Vocational/Technical",
+                "College Graduate", "Post Graduate", "Elementary Undergraduate",
+                "High School Undergraduate", "College Undergraduate"
+        };
+        String[] occupations = {
+                "Employee", "Self-employed", "Vendor", "Driver", "Carpenter", "Teacher",
+                "Nurse", "Security Guard", "Mechanic", "Farmer", "Housewife", "Laborer",
+                "Government Employee", "Electrician", "Plumber", "Cook", "Salesperson",
+                "Tricycle Driver", "Construction Worker", "Fisher", "Technician", "Accountant",
+                "Engineer", "Lawyer", "Businessman", "OFW", "Student"
+        };
+        String[] streets = {
+                "Purok 1", "Purok 2", "Purok 3", "Purok 4", "Purok 5", "Purok 6",
+                "Purok 7", "Purok 8", "Sitio Malinis", "Sitio Bagong Buhay",
+                "Sitio Maliwanag", "Sitio Payatas", "Sitio Kaunlaran"
+        };
 
-        List<Person> peopleList = new ArrayList<>();
         Random random = new Random();
-
-        System.out.println("Seeding 100 Filipino Residents...");
+        System.out.println("Seeding " + count + " Filipino Residents...");
 
         for (int i = 0; i < count; i++) {
+            String firstName = firstNames[random.nextInt(firstNames.length)];
+            String lastName  = lastNames[random.nextInt(lastNames.length)];
+            String middleName = lastNames[random.nextInt(lastNames.length)];
+            String street = streets[random.nextInt(streets.length)];
+
             Person person = new Person();
-            person.setFirstName(firstNames[random.nextInt(firstNames.length)]);
-            person.setLastName(lastNames[random.nextInt(lastNames.length)]);
-            person.setMiddleName(lastNames[random.nextInt(lastNames.length)]);
+            person.setFirstName(firstName);
+            person.setLastName(lastName);
+            person.setMiddleName(middleName);
             person.setGender(genders[random.nextInt(genders.length)]);
             person.setCivilStatus(civilStatuses[random.nextInt(civilStatuses.length)]);
             person.setContactNumber("09" + (100000000 + random.nextInt(900000000)));
-            person.setCompleteAddress("Bgy. Novaliches, Quezon City, Metro Manila");
+            person.setCompleteAddress(street + ", Brgy. Ugong, Valenzuela City, Metro Manila");
             person.setIsResident(true);
+            person.setEmail(firstName.toLowerCase().replaceAll("\\s+", "") + i + "@example.com");
 
-            person.setEmail(person.getFirstName().toLowerCase() + i + "@example.com");
-
-            // Logic para sa Age at BirthDate
             int age;
-            if (i < 10) {
-                // Siguradong 10 Senior Citizens (60-85 years old)
-                age = 60 + random.nextInt(25);
+            if (i < 100) {
+                age = 60 + random.nextInt(26);
             } else {
-                // Regular adults (18-59 years old)
                 age = 18 + random.nextInt(42);
             }
             person.setAge((short) age);
-            person.setOccupation(age >= 60 ? "Retired" : "Employee");
+            person.setOccupation(age >= 60 ? "Retired" : occupations[random.nextInt(occupations.length)]);
             person.setBirthDate(LocalDate.now().minusYears(age).minusDays(random.nextInt(365)));
 
-            // I-save muna ang People (Master)
             Person savedPerson = personRepository.save(person);
 
-            // Gawa ng Resident Profile
             Resident resident = new Resident();
             resident.setPerson(savedPerson);
-            resident.setBarangayIdNumber("BID-2026-" + String.format("%04d", i));
-            resident.setHouseholdNumber("HH-" + (1000 + random.nextInt(9000)));
-            resident.setPrecinctNumber("PR-" + (100 + random.nextInt(900)));
+            resident.setBarangayIdNumber("2026-BID-" + String.format("%04d", i + 1));
+            resident.setHouseholdNumber("2026-HH-" + String.format("%04d", random.nextInt(10000)));
 
-            resident.setIsVoter(age >= 60 || random.nextDouble() < 0.8);
+            int num = random.nextInt(10000);
+            char letter = (char) ('A' + random.nextInt(4));
+            String precinct = random.nextBoolean()
+                    ? String.format("%04d-%c", num, letter)
+                    : String.format("%04d%c", num, letter);
+            resident.setPrecinctNumber(precinct);
 
+            resident.setIsVoter(age >= 18 && (age >= 60 || random.nextDouble() < 0.75));
             resident.setIsHeadOfFamily(random.nextDouble() < 0.25);
-
             resident.setCitizenship("Filipino");
-            resident.setDateOfResidency(LocalDate.now().minusYears(random.nextInt(10)));
+            resident.setDateOfResidency(
+                    LocalDate.now().minusYears(random.nextInt(20)).minusDays(random.nextInt(365))
+            );
+            resident.setReligion(religions[random.nextInt(religions.length)]);
+            resident.setEducationalAttainment(educationalAttainments[random.nextInt(educationalAttainments.length)]);
+
+            // Blood type — 60% may laman, 40% null
+            resident.setBloodType(random.nextDouble() < 0.6 ? bloodTypes[random.nextInt(bloodTypes.length)] : null);
+
+            // 4Ps — ~15% chance
+            resident.setIs4ps(random.nextDouble() < 0.15);
+
+            // Indigent — ~20% chance
+            resident.setIsIndigent(random.nextDouble() < 0.20);
+
+
+            boolean isPwd = random.nextDouble() < 0.10;
+            resident.setIsPwd(isPwd);
+            if (isPwd) {
+                String pwdId = String.format("13-05-19-%03d-%07d",
+                        random.nextInt(900) + 100,
+                        i + 1
+                );
+                resident.setPwdIdNumber(pwdId);
+            } else {
+                resident.setPwdIdNumber(null);
+            }
+
+            // Documents — empty (null sa DB)
 
             residentRepository.save(resident);
         }
-        System.out.println("Successfully seeded 100 residents.");
+
+        System.out.println("Successfully seeded " + count + " residents.");
     }
 
 

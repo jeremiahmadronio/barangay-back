@@ -1,5 +1,6 @@
 package com.barangay.barangay.person.model;
 
+import com.barangay.barangay.enumerated.ResidentStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -10,6 +11,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "resident")
@@ -44,13 +47,28 @@ public class Resident {
     private Boolean isHeadOfFamily = false;
 
 
+    @Column(nullable = false, name = "is_4ps")
+    private Boolean is4ps = false;
+
+    @Column(nullable = false, name = "is_pwd")
+    private Boolean isPwd = false;
+
+    @Column(length = 50, name = "pwd_id_number")
+    private String pwdIdNumber;
+
+    @Column(nullable = false, name = "is_indigent")
+    private Boolean isIndigent = false;
+
+    @Column(length = 50, name = "educational_attainment")
+    private String educationalAttainment;
+
     @Column(length = 50, name = "citizenship")
     private String citizenship = "Filipino";
 
     @Column(length = 50,name = "religion")
     private String religion;
 
-    @Column(length = 20, name = "bloot_type")
+    @Column(length = 20, name = "blood_type")
     private String bloodType;
 
 
@@ -63,4 +81,14 @@ public class Resident {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedDate;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, name = "status")
+    private ResidentStatus status = ResidentStatus.ACTIVE;
+
+    @Column(columnDefinition = "TEXT")
+    private String statusRemarks;
+
+    @OneToMany(mappedBy = "resident", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ResidentDocument> documents = new ArrayList<>();
 }

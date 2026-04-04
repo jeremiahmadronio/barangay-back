@@ -132,18 +132,6 @@ WHERE bc.department.name IN ('BLOTTER', 'LUPONG_TAGAPAMAYAPA')
 
 
 
-    @Query(value = """
-        SELECT 
-            to_char(date_trunc('month', created_at), 'Mon') AS month_label, 
-            COUNT(*) AS total_count
-        FROM cases
-        WHERE dept_id = :deptId 
-          AND created_at >= date_trunc('month', CURRENT_DATE) - INTERVAL '4 months'
-        GROUP BY date_trunc('month', created_at)
-        ORDER BY date_trunc('month', created_at) ASC
-        """, nativeQuery = true)
-    List<Object[]> findMonthlyTrendsNative(@Param("deptId") Long deptId);
-
 
 
     @Query(value = """

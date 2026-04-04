@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -28,4 +29,14 @@ public interface PersonRepository extends JpaRepository<Person, Long> {
     boolean existsByFirstNameAndLastName (String firstName, String lastName);
 
     Optional<Person> findByFirstNameAndLastName (String firstName, String lastName);
+
+
+    boolean existsByFirstNameAndLastNameAndMiddleNameAndBirthDateAndSuffixAndGender(
+            String firstName,
+            String lastName,
+            String middleName,
+            LocalDate birthDate,
+            String suffix,
+            String gender
+    );
 }

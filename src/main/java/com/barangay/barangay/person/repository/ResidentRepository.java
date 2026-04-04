@@ -1,5 +1,6 @@
 package com.barangay.barangay.person.repository;
 
+import com.barangay.barangay.person.dto.ArchiveStatsDTO;
 import com.barangay.barangay.person.dto.ResidentSummary;
 import com.barangay.barangay.person.model.Resident;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -8,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ResidentRepository extends JpaRepository<Resident, Long> {
@@ -15,10 +17,24 @@ public interface ResidentRepository extends JpaRepository<Resident, Long> {
     boolean existsByBarangayIdNumber(String barangayIdNumber);
 
 
+    @Query("""
+        SELECT new com.barangay.barangay.person.dto.ArchiveStatsDTO(
+            COUNT(r), 
+            SUM(CASE WHEN r.status = com.barangay.barangay.enumerated.ResidentStatus.DECEASED THEN 1L ELSE 0L END),
+            SUM(CASE WHEN r.status = com.barangay.barangay.enumerated.ResidentStatus.INACTIVE THEN 1L ELSE 0L END),
+            SUM(CASE WHEN r.status = com.barangay.barangay.enumerated.ResidentStatus.MOVE_OUT THEN 1L ELSE 0L END)
+        )
+        FROM Resident r
+        WHERE r.status != com.barangay.barangay.enumerated.ResidentStatus.ACTIVE
+    """)
+    ArchiveStatsDTO getArchiveStatistics();
+
+
     @Query("SELECT new com.barangay.barangay.person.dto.ResidentSummary(" +
             "r.residentId, r.barangayIdNumber, " +
+            "r.person.photo, " +
             "CONCAT(r.person.firstName, ' ', r.person.lastName), " +
-            "r.person.contactNumber, r.householdNumber, r.isVoter) " +
+            "r.person.contactNumber, r.householdNumber, r.isVoter, r.status) " +
             "FROM Resident r " +
             "WHERE (:search IS NULL OR CAST(:search AS string) = '' " +
             "OR LOWER(CONCAT(r.person.firstName, ' ', r.person.lastName)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +
@@ -43,6 +59,13 @@ public interface ResidentRepository extends JpaRepository<Resident, Long> {
 
     @Query("SELECT COUNT(r) FROM Resident r WHERE r.person.age IS NOT NULL AND r.person.age >= 60")
     long countSeniorCitizens();
+
+
+    @Query("SELECT r.barangayIdNumber FROM Resident r WHERE r.barangayIdNumber LIKE :prefix% ORDER BY r.barangayIdNumber DESC LIMIT 1")
+    Optional<String> findLastBarangayIdByPrefix(@Param("prefix") String prefix);
+
+    @Query("SELECT r.householdNumber FROM Resident r WHERE r.householdNumber LIKE :prefix% ORDER BY r.householdNumber DESC LIMIT 1")
+    Optional<String> findLastHouseholdByPrefix(@Param("prefix") String prefix);
 
 
 

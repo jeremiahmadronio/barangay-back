@@ -14,4 +14,6 @@ public interface EvidenceTypeRepository extends JpaRepository<EvidenceType, Long
 
 
     List<EvidenceType> findByTypeNameInOrderByTypeNameAsc(List<String> names);
+
+    List<EvidenceType> findAllByIdIn(List<Long> ids);
 }

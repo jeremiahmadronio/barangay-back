@@ -6,7 +6,8 @@ import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import java.util.List;
 
-public record ResidentProfileViewDTO (
+public record ResidentFullProfileViewDTO(
+
         Long peopleId,
         byte[] photo,
         String firstName,
@@ -21,11 +22,11 @@ public record ResidentProfileViewDTO (
         String contactNumber,
         String email,
         String completeAddress,
-
+        String occupation,
         String barangayIdNumber,
         String householdNumber,
         String precinctNumber,
-        String occupation,
+
         String citizenship,
         String religion,
         String bloodType,
@@ -39,8 +40,8 @@ public record ResidentProfileViewDTO (
         String educationalAttainment,
         ResidentStatus status,
 
+        List<ResidentCaseHistoryDTO> cases,
+        List<ResidentDocumentViewDTO> documents
 
-
-        List<ResidentCaseHistoryDTO> cases
 ) {
 }

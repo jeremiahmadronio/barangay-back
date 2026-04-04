@@ -38,6 +38,9 @@ public class Person {
     @Column(length = 100, name = "middle_name")
     private String middleName;
 
+    @Column(length = 10)
+    private String suffix;
+
     @Column(length = 15, name = "contact_number")
     private String contactNumber;
 

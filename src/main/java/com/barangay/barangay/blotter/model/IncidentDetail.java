@@ -20,7 +20,8 @@ public class IncidentDetail {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "nature_of_complaint")
+    @Column(name = "nature_of_complaint" ,columnDefinition = "TEXT")
+
     private String natureOfComplaint;
 
     @Column(name = "incident_frequency")
