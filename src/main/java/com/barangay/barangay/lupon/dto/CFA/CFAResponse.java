@@ -14,12 +14,13 @@ public record CFAResponse (
          String controlNumber,
          LocalDateTime issuedAt,
 
-         String luponChairman,
+String luponChairman,
          String chairmanPosition,
          String luponSecretary,
          String secretaryPosition,
          String luponMember,
          String memberPosition
+
 
 
 

@@ -33,4 +33,18 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
     """)
     List<AssignOfficerOptionDTO> findAssignOfficerOptionDTO();
 
+    @Query("""
+        SELECT new com.barangay.barangay.vawc.dto.AssignOfficerOptionDTO(
+            e.id, 
+            CONCAT(p.firstName, ' ', p.lastName), 
+            e.position
+        )
+        FROM Employee e
+        JOIN e.person p
+        JOIN e.department d
+        WHERE e.isActive = true
+        AND (UPPER(d.name) = 'VAWC')
+    """)
+    List<AssignOfficerOptionDTO> findAssignOfficerOptioNComplaint();
+
 }

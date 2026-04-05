@@ -63,6 +63,7 @@ public class VawcService {
     private final UserManagementRepository userManagementRepository;
     private final CaseNoteRepository caseNoteRepository;
     private final PangkatCFARepository pangkatCFARepository;
+    private final PangkatCFARepository cfaRepository;
 
     @Transactional(readOnly = true)
     public Page<CaseSummaryDTO> getVAWCSummary(
@@ -530,6 +531,14 @@ public class VawcService {
 
 
 
+
+    @Transactional(readOnly = true)
+    public List<AssignOfficerOptionDTO> getVawcComplaintOfficer() {
+        return employeeRepository.findAssignOfficerOptioNComplaint();
+    }
+
+
+
     @Transactional
     public void addNoteToCase(AddCaseNoteRequest dto, User officer, String ipAddress) {
         User managedOfficer = userManagementRepository.findByIdWithDepartments(officer.getId())
@@ -684,4 +693,35 @@ public class VawcService {
         int randomDigits = 10000 + random.nextInt(90000);
         return year + "-RF-" + randomDigits;
     }
+
+
+
+    @Transactional(readOnly = true)
+    public DisplayCFADTO getSingleCfaByCaseId(Long caseId) {
+        PangkatCFA p = cfaRepository.findByBlotterCaseId(caseId)
+                .orElseThrow(() -> new RuntimeException("Erroe: No cfa in this case  " + caseId));
+
+        var bc = p.getBlotterCase();
+        var comp = bc.getComplainant();
+        var resp = bc.getRespondent();
+        var emp = bc.getEmployee();
+
+        String cPrefix = (comp != null && comp.getPerson() != null && "MALE".equalsIgnoreCase(comp.getPerson().getGender())) ? "Mr. " : "Ms. ";
+        String rPrefix = (resp != null && resp.getPerson() != null && "MALE".equalsIgnoreCase(resp.getPerson().getGender())) ? "Mr. " : "Ms. ";
+
+        return new DisplayCFADTO(
+                bc.getBlotterNumber(),
+                p.getSubjectOfLitigation(),
+                cPrefix + comp.getPerson().getFirstName() + " " + comp.getPerson().getLastName(),
+                comp.getPerson().getCompleteAddress(),
+                rPrefix + resp.getPerson().getFirstName() + " " + resp.getPerson().getLastName(),
+                resp.getPerson().getCompleteAddress(),
+                p.getGrounds(),
+                p.getControlNumber(),
+                p.getIssuedAt(),
+                emp != null ? emp.getPerson().getFirstName() + " " + emp.getPerson().getLastName() : "Unassigned",
+                emp != null ? emp.getPosition() : "N/A"
+        );
+    }
+
 }

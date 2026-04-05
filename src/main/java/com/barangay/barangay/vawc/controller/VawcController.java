@@ -140,6 +140,13 @@ public class VawcController {
     }
 
 
+    @GetMapping("/assign-officer-complaint")
+    public ResponseEntity<List<AssignOfficerOptionDTO>> getVawcComplaintOfficer(){
+        return ResponseEntity.ok(vawcService.getVawcComplaintOfficer());
+    }
+
+
+
     @PostMapping("/add-note")
     public ResponseEntity<?> addCaseNotes(
             @Valid @RequestBody AddCaseNoteRequest dto,
@@ -181,4 +188,11 @@ public class VawcController {
         String result = vawcService.issueVawcReferral(dto, actor.user());
         return ResponseEntity.ok(result);
     }
+
+
+    @GetMapping("/cfa-detail/{caseId}")
+    public ResponseEntity<DisplayCFADTO> getCfaDetail(@PathVariable Long caseId) {
+        return ResponseEntity.ok(vawcService.getSingleCfaByCaseId(caseId));
+    }
+
 }

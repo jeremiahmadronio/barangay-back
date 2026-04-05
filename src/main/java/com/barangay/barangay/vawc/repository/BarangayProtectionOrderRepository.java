@@ -1,6 +1,7 @@
 package com.barangay.barangay.vawc.repository;
 
 import com.barangay.barangay.blotter.model.BlotterCase;
+import com.barangay.barangay.enumerated.BpoStatus;
 import com.barangay.barangay.enumerated.CaseStatus;
 import com.barangay.barangay.vawc.model.BaranggayProtectionOrder;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -16,6 +17,12 @@ import java.util.Optional;
 public interface BarangayProtectionOrderRepository extends JpaRepository<BaranggayProtectionOrder, Long> {
 
     Optional<BaranggayProtectionOrder> findByBlotterCaseId(Long caseId);
+
+
+    long countByStatus(BpoStatus status);
+
+    long countByCreatedAtAfter(LocalDateTime date);
+    long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
 
     @Query("""
         SELECT bpo FROM BaranggayProtectionOrder bpo

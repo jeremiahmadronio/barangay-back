@@ -2,6 +2,7 @@ package com.barangay.barangay.vawc.repository;
 
 import com.barangay.barangay.blotter.model.BlotterCase;
 import com.barangay.barangay.enumerated.CaseStatus;
+import com.barangay.barangay.vawc.dto.DashboardCaseDistributionDTO;
 import com.barangay.barangay.vawc.dto.projection.CategorySummaryProjection;
 import com.barangay.barangay.vawc.dto.projection.NatureStatsProjection;
 import com.barangay.barangay.vawc.dto.projection.ReportStatsProjection;
@@ -25,6 +26,19 @@ public interface VawcCaseRepository extends JpaRepository<BlotterCase, Long>, Jp
 
     @Query("SELECT COUNT(b) FROM BlotterCase b WHERE b.department.name = 'VAWC' AND b.status = :status")
     long countByStatus(@Param("status") CaseStatus status);
+
+
+    long countByDepartmentNameAndDateFiledAfter(String deptName, LocalDateTime date);
+    long countByDepartmentNameAndDateFiledBetween(String deptName, LocalDateTime start, LocalDateTime end);
+
+    long countByDepartmentNameAndStatusAndSettledAtAfter(String deptName, CaseStatus status, LocalDateTime date);
+    long countByDepartmentNameAndStatusAndSettledAtBetween(String deptName, CaseStatus status, LocalDateTime start, LocalDateTime end);
+
+
+    List<BlotterCase> findTop6ByDepartmentNameOrderByDateFiledDesc(String deptName);
+
+    @Query("SELECT i.natureOfComplaint FROM BlotterCase c JOIN c.incidentDetail i WHERE c.department.name = :deptName")
+    List<String> findAllNatureOfComplaintsByDept(@Param("deptName") String deptName);
 
     @Query("""
         SELECT COUNT(b) FROM BlotterCase b 
