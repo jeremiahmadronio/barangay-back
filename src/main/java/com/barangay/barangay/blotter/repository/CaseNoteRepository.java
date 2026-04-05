@@ -10,4 +10,5 @@ import java.util.List;
 public interface CaseNoteRepository extends JpaRepository<CaseNote, Long> {
 
     List<CaseNote> findByBlotterCaseBlotterNumberOrderByCreatedAtDesc(String blotterNumber);
+    List<CaseNote> findByBlotterCaseIdOrderByCreatedAtDesc(Long caseId);
 }

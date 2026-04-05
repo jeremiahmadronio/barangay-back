@@ -111,12 +111,10 @@ public class ComplaintService {
         blotter.setIsCertified(true);
         blotter.setCertifiedAt(LocalDateTime.now());
 
-        // 6. COMPLAINANT LINK
         Complainant cLink = new Complainant();
         cLink.setPerson(complainantPerson);
         blotter.setComplainant(cLink);
 
-        // 7. RESPONDENT LINK
         Respondent rLink = new Respondent();
         rLink.setPerson(respondentPerson);
         rLink.setAlias(dto.respondentAlias());
@@ -124,12 +122,10 @@ public class ComplaintService {
         rLink.setRelationshipToComplainant(dto.relationshipTypeName());
         blotter.setRespondent(rLink);
 
-        // 8. NARRATIVE
         Narrative narrative = new Narrative();
         narrative.setStatement(dto.narrativeStatement());
         blotter.setNarrativeStatement(narrative);
 
-        // 9. INCIDENT DETAIL
         IncidentDetail incident = new IncidentDetail();
         incident.setNatureOfComplaint(natureOfComplaint);
         incident.setDateOfIncident(dto.dateOfIncident());
@@ -243,11 +239,10 @@ public class ComplaintService {
 
 
 
-
-
-
-
     }
+
+
+
 
 
     private String generateCaseNumber() {

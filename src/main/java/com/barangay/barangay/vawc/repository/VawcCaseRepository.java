@@ -56,4 +56,10 @@ public interface VawcCaseRepository extends JpaRepository<BlotterCase, Long>, Jp
     @Query("SELECT er.type.typeName FROM EvidenceRecord er WHERE er.blotterCase.id = :caseId")
     List<String> findEvidenceNamesByCaseId(@Param("caseId") Long caseId);
 
+    Optional<BlotterCase> findByBlotterNumber(String blotterNumber);
+
+
+
+
+
 }

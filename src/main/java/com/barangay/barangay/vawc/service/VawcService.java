@@ -1,25 +1,36 @@
 package com.barangay.barangay.vawc.service;
 
 import com.barangay.barangay.admin_management.model.User;
+import com.barangay.barangay.audit.service.AuditLogService;
 import com.barangay.barangay.blotter.dto.complaint.WitnessDTO;
+import com.barangay.barangay.blotter.dto.notes.AddCaseNoteRequest;
+import com.barangay.barangay.blotter.dto.notes.CaseNoteViewDTO;
+import com.barangay.barangay.blotter.dto.reports_and_display.CaseTimeLineDTO;
 import com.barangay.barangay.blotter.model.BlotterCase;
+import com.barangay.barangay.blotter.model.CaseNote;
+import com.barangay.barangay.blotter.model.CaseTimeline;
 import com.barangay.barangay.blotter.model.IncidentDetail;
+import com.barangay.barangay.blotter.repository.CaseNoteRepository;
+import com.barangay.barangay.blotter.repository.CasteTimeLineRepository;
 import com.barangay.barangay.department.model.Department;
-import com.barangay.barangay.enumerated.CaseStatus;
+import com.barangay.barangay.employee.model.Employee;
+import com.barangay.barangay.employee.repository.EmployeeRepository;
+import com.barangay.barangay.enumerated.*;
 import com.barangay.barangay.person.model.Person;
 import com.barangay.barangay.person.model.Respondent;
-import com.barangay.barangay.vawc.dto.CaseStatsDTO;
-import com.barangay.barangay.vawc.dto.CaseSummaryDTO;
-import com.barangay.barangay.vawc.dto.CaseViewDTO;
-import com.barangay.barangay.vawc.dto.ViolenceTypeDTO;
+import com.barangay.barangay.person.repository.WitnessRepository;
+import com.barangay.barangay.user_management.repository.UserManagementRepository;
+import com.barangay.barangay.vawc.dto.*;
 import com.barangay.barangay.vawc.model.BaranggayProtectionOrder;
-import com.barangay.barangay.vawc.repository.VawcCaseRepository;
+import com.barangay.barangay.vawc.model.Intervention;
+import com.barangay.barangay.vawc.model.InterventionFollowUp;
+import com.barangay.barangay.vawc.model.InterventionPerformedBy;
+import com.barangay.barangay.vawc.repository.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,7 +38,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -36,8 +49,16 @@ public class VawcService {
 
 
     private final VawcCaseRepository caseRepository;
-
-
+    private final BarangayProtectionOrderRepository barangayProtectionOrderRepository;
+    private final AuditLogService auditLogService;
+    private final ObjectMapper objectMapper;
+    private final InterventionRepository interventionRepository;
+    private final InterventionPerfomedByRepository interventionPerfomedByRepository;
+    private final EmployeeRepository employeeRepository;
+    private final InterventionFollowUpRepository interventionFollowUpRepository;
+    private final CasteTimeLineRepository caseTimeLineRepository;
+    private final UserManagementRepository userManagementRepository;
+    private final CaseNoteRepository caseNoteRepository;
 
     @Transactional(readOnly = true)
     public Page<CaseSummaryDTO> getVAWCSummary(
@@ -159,6 +180,9 @@ public class VawcService {
         return new CaseStatsDTO(total, active, expiringSoon, pending);
     }
 
+
+
+
     @Transactional(readOnly = true)
     public CaseViewDTO getVawcCaseDetails(Long id) {
         BlotterCase bc = caseRepository.findByIdWithFullDetails(id)
@@ -237,4 +261,365 @@ public class VawcService {
                         )).toList() : List.of()
         );
     }
+
+
+    @Transactional
+    public String activateBpo(Long caseId, User officer, String ipAddress) {
+        BaranggayProtectionOrder bpo = barangayProtectionOrderRepository.findByBlotterCaseId(caseId)
+                .orElseThrow(() -> new RuntimeException("BPO Record not found for this case."));
+
+        if (bpo.getStatus() != BpoStatus.PENDING) {
+            throw new RuntimeException("BPO is already " + bpo.getStatus() + ". Cannot re-activate.");
+        }
+
+
+        String generatedBpoNumber;
+        boolean isExisting;
+        String currentYear = String.valueOf(LocalDate.now().getYear());
+
+        do {
+            String randomSuffix = generateRandomAlphanumeric(5);
+            generatedBpoNumber = currentYear + "-BPO-" + randomSuffix;
+
+            isExisting = barangayProtectionOrderRepository.existsByBpoControlNumber(generatedBpoNumber);
+
+        } while (isExisting);
+
+        LocalDate today = LocalDate.now();
+        bpo.setBpoControlNumber(generatedBpoNumber);
+        bpo.setExpiredAt(today.plusDays(15));
+        bpo.setStatus(BpoStatus.ISSUED);
+        bpo.setCreatedBy(officer);
+
+        BlotterCase bc = bpo.getBlotterCase();
+        bc.setStatus(CaseStatus.UNDER_MEDIATION);
+        bc.setStatusRemarks("BPO has been officially issued. Valid until: " + bpo.getExpiredAt());
+
+        BaranggayProtectionOrder savedBpo = barangayProtectionOrderRepository.save(bpo);
+
+
+        CaseTimeline timeline = new CaseTimeline();
+        timeline.setBlotterCase(bc);
+        timeline.setEventType(TimelineEventType.BPO_ISSUED);
+        timeline.setTitle("BPO Issued: " + generatedBpoNumber);
+        timeline.setDescription("Barangay Protection Order has been officially issued by " +
+                officer.getPerson().getFirstName() + " " + officer.getPerson().getLastName() +
+                ". Protection is valid for 15 days (until " + bpo.getExpiredAt() + ").");
+        timeline.setPerformedBy(officer);
+        caseTimeLineRepository.save(timeline);
+
+        try {
+            Map<String, Object> details = new LinkedHashMap<>();
+            details.put("caseNumber", bc.getBlotterNumber());
+            details.put("bpoControlNumber", savedBpo.getBpoControlNumber());
+            details.put("expiryDate", savedBpo.getExpiredAt());
+            details.put("issuedBy", officer.getPerson().getFirstName() + " " + officer.getPerson().getLastName());
+
+            String logDetails = objectMapper.writeValueAsString(details);
+
+            auditLogService.log(
+                    officer,
+                    Departments.VAWC,
+                    "VAWC_MODULE",
+                    Severity.INFO,
+                    "ACTIVATE_BPO",
+                    ipAddress,
+                    "Issued BPO for Case: " + bc.getBlotterNumber(),
+                    null,
+                    logDetails
+            );
+        } catch (Exception e) {
+            auditLogService.log(officer, Departments.VAWC, "ERROR", Severity.INFO, "AUDIT_LOG_FAIL", ipAddress, e.getMessage(), null, null);
+        }
+
+        return "BPO successfully activated. Expiration set to " + bpo.getExpiredAt();
+    }
+
+
+    private String generateRandomAlphanumeric(int length) {
+        String chars = "0123456789";
+        java.security.SecureRandom random = new java.security.SecureRandom();
+        StringBuilder sb = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            sb.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        return sb.toString();
+    }
+
+
+    @Transactional(readOnly = true)
+    public BpoDetails getActivatedBpoDetails(Long caseId) {
+        BaranggayProtectionOrder bpo = barangayProtectionOrderRepository.findBpoDetailsByCaseId(caseId)
+                .orElseThrow(() -> new RuntimeException("BPO Record not found for this case."));
+
+        if (bpo.getExpiredAt() == null) {
+            throw new RuntimeException("BPO is not yet activated.");
+        }
+        BlotterCase bc = bpo.getBlotterCase();
+        Person victim = bc.getComplainant().getPerson();
+        Person resp = bc.getRespondent().getPerson();
+
+        String officerName = (bc.getEmployee() != null && bc.getEmployee().getPerson() != null)
+                ? bc.getEmployee().getPerson().getFirstName() + " " + bc.getEmployee().getPerson().getLastName()
+                : "Unassigned";
+        return new BpoDetails(
+                bc.getBlotterNumber(),
+                victim.getFirstName() + " " + victim.getLastName(),
+                resp.getFirstName() + " " + resp.getLastName(),
+                officerName,
+                bpo.getBpoControlNumber(),
+                bpo.getCreatedAt(),
+                bpo.getExpiredAt()
+        );
+    }
+
+
+    @Transactional
+    public String addIntervention(InterventionRequestDTO dto, User officer, String ipAddress) {
+        BaranggayProtectionOrder bpo = barangayProtectionOrderRepository.findById(dto.bpoId())
+                .orElseThrow(() -> new RuntimeException("BPO Record not found."));
+        BlotterCase bc = bpo.getBlotterCase();
+
+        Intervention log = new Intervention();
+        log.setBaranggayProtectionOrder(bpo);
+        log.setActivityType(dto.activityType());
+        log.setInterventionDetails(dto.interventionDetails());
+        log.setInterventionDate(dto.interventionDate());
+        log.setInterventionDuration(dto.interventionDuration());
+        log.setCreatedBy(officer);
+        Intervention savedLog = interventionRepository.save(log);
+
+        List<String> performerNames = new ArrayList<>();
+        if (dto.performedByEmployeeIds() != null && !dto.performedByEmployeeIds().isEmpty()) {
+            List<InterventionPerformedBy> performers = dto.performedByEmployeeIds().stream().map(empId -> {
+                Employee emp = employeeRepository.findById(empId)
+                        .orElseThrow(() -> new RuntimeException("Employee ID " + empId + " not found."));
+
+                performerNames.add(emp.getPerson().getFirstName() + " " + emp.getPerson().getLastName());
+
+                InterventionPerformedBy pb = new InterventionPerformedBy();
+                pb.setIntervention(savedLog);
+                pb.setEmployee(emp);
+                return pb;
+            }).toList();
+
+            interventionPerfomedByRepository.saveAll(performers);
+        }
+
+        CaseTimeline timeline = new CaseTimeline();
+        timeline.setBlotterCase(bc);
+        timeline.setEventType(TimelineEventType.INTERVENTION_RECORDED);
+        timeline.setTitle("Intervention Recorded: " + dto.activityType());
+
+        String performerList = String.join(", ", performerNames);
+        timeline.setDescription("An intervention activity ('" + dto.activityType() + "') was conducted. " +
+                "Details: " + dto.interventionDetails() + ". " +
+                "Personnel involved: " + (performerList.isEmpty() ? "None specified" : performerList));
+
+        timeline.setPerformedBy(officer);
+        caseTimeLineRepository.save(timeline);
+
+        try {
+            Map<String, Object> snapshot = new LinkedHashMap<>();
+            snapshot.put("BPO_Control_No", bpo.getBpoControlNumber());
+            snapshot.put("Activity", dto.activityType());
+            snapshot.put("Personnel", performerNames);
+            snapshot.put("Duration", dto.interventionDuration() + " mins");
+
+            String jsonSnapshot = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(snapshot);
+
+            auditLogService.log(
+                    officer,
+                    Departments.VAWC,
+                    "VAWC_INTERVENTION",
+                    Severity.INFO,
+                    "CREATE_INTERVENTION",
+                    ipAddress,
+                    "Intervention logged for BPO: " + bpo.getBpoControlNumber(),
+                    null,
+                    jsonSnapshot
+            );
+        } catch (Exception e) {
+            auditLogService.log(officer, Departments.VAWC, "ERROR", Severity.CRITICAL, "AUDIT_FAIL", ipAddress, e.getMessage(), null, null);
+        }
+
+        return "Intervention recorded successfully.";
+    }
+
+    @Transactional
+    public String addFollowUp(FollowUpDTO dto, User officer, String ipAddress) {
+        Intervention intervention = interventionRepository.findById(dto.interventionId())
+                .orElseThrow(() -> new RuntimeException("Intervention Log not found."));
+
+        InterventionFollowUp followUp = new InterventionFollowUp();
+        followUp.setIntervention(intervention);
+        followUp.setNotes(dto.notes());
+        followUp.setCreatedBy(officer);
+
+        interventionFollowUpRepository.save(followUp);
+        try {
+            Map<String, Object> details = new LinkedHashMap<>();
+            details.put("interventionId", intervention.getId());
+            details.put("activityType", intervention.getActivityType());
+            details.put("notes", dto.notes());
+            details.put("officer", officer.getPerson().getLastName());
+
+            auditLogService.log(
+                    officer,
+                    Departments.VAWC,
+                    "INTERVENTION_FOLLOW_UP",
+                    Severity.INFO,
+                    "ADD_FOLLOW_UP",
+                    ipAddress,
+                    "Follow-up added for intervention ID: " + intervention.getId(),
+                    null,
+                    objectMapper.writeValueAsString(details)
+            );
+        } catch (Exception e) {
+            auditLogService.log(officer, Departments.VAWC, "ERROR", Severity.CRITICAL, "LOG_FAIL", ipAddress, e.getMessage(), null, null);
+        }
+
+        return "Follow-up notes added successfully.";
+    }
+
+
+
+    @Transactional(readOnly = true)
+    public InterventionViewDTO getInterventionFullDetails(Long interventionId) {
+        Intervention intervention = interventionRepository.findByIdWithDetails(interventionId)
+                .orElseThrow(() -> new RuntimeException("Intervention not found."));
+
+        List<InterventionFollowUp> followUps = interventionFollowUpRepository
+                .findAllByInterventionIdOrderByCreatedAtDesc(interventionId);
+
+        List<String> performers = intervention.getPerformedBy().stream()
+                .map(emp -> emp.getPerson().getFirstName() + " " + emp.getPerson().getLastName())
+                .toList();
+
+        List<FollowUpViewDTO> followUpDTOs = followUps.stream()
+                .map(f -> new FollowUpViewDTO(
+                        f.getId(),
+                        f.getNotes(),
+                        f.getCreatedAt(),
+                        f.getCreatedBy().getPerson().getFirstName() + " " + f.getCreatedBy().getPerson().getLastName()
+                )).toList();
+
+        return new InterventionViewDTO(
+                intervention.getId(),
+                intervention.getActivityType(),
+                intervention.getInterventionDetails(),
+                intervention.getInterventionDate(),
+                intervention.getInterventionDuration(),
+                intervention.getCreatedBy().getPerson().getFirstName() + " " + intervention.getCreatedBy().getPerson().getLastName(),
+                performers,
+                followUpDTOs
+        );
+    }
+
+
+
+    @Transactional(readOnly = true)
+    public List<AssignOfficerOptionDTO> getVawcInterventionDropdown() {
+        return employeeRepository.findAssignOfficerOptionDTO();
+    }
+
+
+
+    @Transactional
+    public void addNoteToCase(AddCaseNoteRequest dto, User officer, String ipAddress) {
+        User managedOfficer = userManagementRepository.findByIdWithDepartments(officer.getId())
+                .orElseThrow(() -> new RuntimeException("Officer not found."));
+
+        BlotterCase blotterCase = caseRepository.findByBlotterNumber(dto.blotterNumber())
+                .orElseThrow(() -> new RuntimeException("Case not found: " + dto.blotterNumber()));
+
+        CaseNote caseNote = new CaseNote();
+        caseNote.setBlotterCase(blotterCase);
+        caseNote.setNote(dto.note());
+        caseNote.setCreatedBy(managedOfficer);
+
+        caseNoteRepository.save(caseNote);
+
+
+        CaseTimeline timeline = new CaseTimeline();
+        timeline.setBlotterCase(blotterCase);
+
+        timeline.setEventType(TimelineEventType.NOTE_ADDED);
+        timeline.setTitle("Note Added");
+
+        String noteSnippet = dto.note().length() > 100
+                ? dto.note().substring(0, 97) + "..."
+                : dto.note();
+        timeline.setDescription(noteSnippet);
+
+        timeline.setPerformedBy(managedOfficer);
+        caseTimeLineRepository.save(timeline);
+
+
+        logNoteActivity(managedOfficer, blotterCase, dto.note(), ipAddress);
+
+    }
+
+    private void logNoteActivity(User officer, BlotterCase bc, String note, String ip) {
+        try {
+            Map<String, Object> snapshot = new LinkedHashMap<>();
+            snapshot.put("caseNumber", bc.getBlotterNumber());
+            snapshot.put("noteSnippet", note.substring(0, Math.min(note.length(), 100)));
+            snapshot.put("officer", officer.getPerson().getFirstName() + " " + officer.getPerson().getLastName());
+
+            String jsonState = objectMapper.writeValueAsString(snapshot);
+
+            auditLogService.log(
+                    officer,
+                    Departments.BLOTTER,
+                    "CASE_NOTE_ADDED",
+                    Severity.INFO,
+                    "ADD_NOTE",
+                    ip,
+                    "Added follow-up note to Case: " + bc.getBlotterNumber(),
+                    null,
+                    jsonState
+            );
+        } catch (Exception e) {
+            auditLogService.log(officer, null, "ERROR", Severity.CRITICAL, "LOG_FAIL", ip, e.getMessage(), null, null);
+        }
+    }
+
+
+    @Transactional(readOnly = true)
+    public List<CaseNoteViewDTO> getCaseNotesById(Long caseId) {
+        // 1. Brutal Check: Siguraduhin nating buhay 'yung kaso
+        if (!caseRepository.existsById(caseId)) {
+            throw new RuntimeException("Case ID " + caseId + " not found.");
+        }
+
+        List<CaseNote> notes = caseNoteRepository.findByBlotterCaseIdOrderByCreatedAtDesc(caseId);
+
+        // 3. Mapping to DTO
+        return notes.stream()
+                .map(note -> new CaseNoteViewDTO(
+                        note.getId(),
+                        note.getNote(),
+                        note.getCreatedBy().getPerson().getFirstName() + " " + note.getCreatedBy().getPerson().getLastName(),
+                        note.getCreatedAt()
+                ))
+                .toList();
+    }
+
+
+    public List<CaseTimeLineDTO> getTimelineByCase(String caseId) {
+        return caseTimeLineRepository.findByBlotterCase_BlotterNumberOrderByEventDateDesc(caseId)
+                .stream()
+                .map(t -> new CaseTimeLineDTO(
+                        t.getId(),
+                        t.getEventType(),
+                        t.getTitle(),
+                        t.getDescription(),
+                        t.getPerformedBy() != null ?
+                                t.getPerformedBy().getPerson().getFirstName() + " " + t.getPerformedBy().getPerson().getLastName() : "System",
+                        t.getEventDate()
+                ))
+                .collect(Collectors.toList());
+    }
+
 }
