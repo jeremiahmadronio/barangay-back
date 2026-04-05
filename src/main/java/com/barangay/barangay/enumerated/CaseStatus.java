@@ -12,7 +12,7 @@ public enum CaseStatus {
     EXPIRED_UNACTIONED, // Na-stuck sa Pending/Mediation nang walang galaw (15-day limit)
 
     ELEVATED_TO_FORMAL,
-    SETTLED,            // May areglong nangyari (Success!)
+    SETTLED,
     RECORDED,           // Para sa "For the Record" cases lang
 
     // 5. Unsuccessful End States
@@ -22,5 +22,6 @@ public enum CaseStatus {
 
     // 6. Maintenance States
     ARCHIVED,           // Tapos na at matagal na
-    CLOSED              // General closure
+    CLOSED,
+    WITHDRAWN// General closure
 }

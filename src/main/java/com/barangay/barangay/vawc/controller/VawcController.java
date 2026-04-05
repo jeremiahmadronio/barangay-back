@@ -164,4 +164,21 @@ public class VawcController {
     public ResponseEntity<List<CaseTimeLineDTO>> getCaseTimeline(@PathVariable String caseId) {
         return ResponseEntity.ok(vawcService.getTimelineByCase(caseId));
     }
+
+    @PutMapping("/cases/{id}/withdraw")
+    public ResponseEntity<String> withdrawCase(
+            @PathVariable Long id,
+            @RequestBody UpdateCaseStatusDTO request) {
+        return ResponseEntity.ok(vawcService.withdrawVawcCase(id, request));
+    }
+
+
+    @PostMapping("/create-referral")
+    public ResponseEntity<String> issueReferral(
+            @RequestBody CreateReferralDTO dto,
+            @AuthenticationPrincipal CustomUserDetails actor) {
+
+        String result = vawcService.issueVawcReferral(dto, actor.user());
+        return ResponseEntity.ok(result);
+    }
 }

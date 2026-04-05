@@ -16,6 +16,8 @@ import com.barangay.barangay.department.model.Department;
 import com.barangay.barangay.employee.model.Employee;
 import com.barangay.barangay.employee.repository.EmployeeRepository;
 import com.barangay.barangay.enumerated.*;
+import com.barangay.barangay.lupon.model.PangkatCFA;
+import com.barangay.barangay.lupon.repository.PangkatCFARepository;
 import com.barangay.barangay.person.model.Person;
 import com.barangay.barangay.person.model.Respondent;
 import com.barangay.barangay.person.repository.WitnessRepository;
@@ -35,6 +37,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -59,6 +62,7 @@ public class VawcService {
     private final CasteTimeLineRepository caseTimeLineRepository;
     private final UserManagementRepository userManagementRepository;
     private final CaseNoteRepository caseNoteRepository;
+    private final PangkatCFARepository pangkatCFARepository;
 
     @Transactional(readOnly = true)
     public Page<CaseSummaryDTO> getVAWCSummary(
@@ -290,6 +294,7 @@ public class VawcService {
         bpo.setExpiredAt(today.plusDays(15));
         bpo.setStatus(BpoStatus.ISSUED);
         bpo.setCreatedBy(officer);
+        bpo.setActivatedAt(LocalDateTime.now());
 
         BlotterCase bc = bpo.getBlotterCase();
         bc.setStatus(CaseStatus.UNDER_MEDIATION);
@@ -588,14 +593,12 @@ public class VawcService {
 
     @Transactional(readOnly = true)
     public List<CaseNoteViewDTO> getCaseNotesById(Long caseId) {
-        // 1. Brutal Check: Siguraduhin nating buhay 'yung kaso
         if (!caseRepository.existsById(caseId)) {
             throw new RuntimeException("Case ID " + caseId + " not found.");
         }
 
         List<CaseNote> notes = caseNoteRepository.findByBlotterCaseIdOrderByCreatedAtDesc(caseId);
 
-        // 3. Mapping to DTO
         return notes.stream()
                 .map(note -> new CaseNoteViewDTO(
                         note.getId(),
@@ -622,4 +625,63 @@ public class VawcService {
                 .collect(Collectors.toList());
     }
 
+
+
+    @Transactional
+    public String withdrawVawcCase(Long caseId, UpdateCaseStatusDTO request) {
+        BlotterCase bc = caseRepository.findById(caseId)
+                .orElseThrow(() -> new RuntimeException("The requested case record could not be found in the system."));
+
+        if (bc.getStatus() == CaseStatus.SETTLED || bc.getStatus() == CaseStatus.CERTIFIED_TO_FILE_ACTION || bc.getStatus() == CaseStatus.CLOSED) {
+            throw new RuntimeException("Illegal Action: This case has already reached a final status and cannot be withdrawn.");
+        }
+
+        bc.setStatus(CaseStatus.WITHDRAWN);
+        bc.setStatusRemarks(request.reason());
+        bc.setSettledAt(LocalDateTime.now());
+        caseRepository.save(bc);
+
+        barangayProtectionOrderRepository.findByBlotterCase(bc).ifPresent(bpo -> {
+            if (bpo.getStatus() != BpoStatus.EXPIRED) {
+                bpo.setStatus(BpoStatus.REVOKED);
+                barangayProtectionOrderRepository.save(bpo);
+            }
+        });
+
+        return "Case withdrawal processed successfully.";
+    }
+
+
+
+    @Transactional
+    public String issueVawcReferral(CreateReferralDTO dto, User currentUser) {
+        BlotterCase bc = caseRepository.findById(dto.caseId())
+                .orElseThrow(() -> new RuntimeException("Operational Error: The specified case record was not found."));
+
+        if (bc.getStatus() == CaseStatus.CERTIFIED_TO_FILE_ACTION || bc.getStatus() == CaseStatus.SETTLED) {
+            throw new RuntimeException("Validation Failed: A referral or settlement has already been processed for this case.");
+        }
+
+        PangkatCFA referral = new PangkatCFA();
+        referral.setBlotterCase(bc);
+        referral.setGrounds(dto.grounds());
+        referral.setSubjectOfLitigation(dto.subjectOfLitigation());
+        referral.setControlNumber(generateControlNumber());
+        referral.setIssuedBy(currentUser);
+        pangkatCFARepository.save(referral);
+
+        bc.setStatus(CaseStatus.CERTIFIED_TO_FILE_ACTION);
+        bc.setStatusRemarks("CASE REFERRED TO PROPER AUTHORITIES. Referral Control #: " + generateControlNumber());
+        bc.setSettledAt(LocalDateTime.now());
+        caseRepository.save(bc);
+
+        return "Referral letter issued and case status updated to REFERRED.";
+    }
+
+    private String generateControlNumber() {
+        int year = LocalDate.now().getYear();
+        SecureRandom random = new SecureRandom();
+        int randomDigits = 10000 + random.nextInt(90000);
+        return year + "-RF-" + randomDigits;
+    }
 }

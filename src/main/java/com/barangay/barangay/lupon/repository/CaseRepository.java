@@ -29,33 +29,35 @@ public interface CaseRepository extends JpaRepository<BlotterCase,Long> {
 
 
     @Query("""
-    SELECT new com.barangay.barangay.lupon.dto.LuponSummaryDTO(
-        b.id,
-        b.blotterNumber,
-        CONCAT(c.person.firstName, ' ', c.person.lastName),
-        CONCAT(r.person.firstName, ' ', r.person.lastName),
-        id.natureOfComplaint,
-        b.dateFiled,
-        CAST(b.status AS string)
-    )
-    FROM BlotterCase b
-    JOIN b.complainant c
-    JOIN b.respondent r
-    JOIN b.incidentDetail id
-    JOIN id.natureOfComplaint n
-    WHERE b.department.name = :deptName
-    AND b.status IN :statuses
-    AND (CAST(:startDate AS LocalDateTime) IS NULL OR b.dateFiled >= :startDate)
-    AND (CAST(:endDate AS LocalDateTime) IS NULL OR b.dateFiled <= :endDate)
-    AND (CAST(:search AS String) IS NULL OR (
-        b.blotterNumber ILIKE %:search% OR
-        c.person.firstName ILIKE %:search% OR
-        c.person.lastName ILIKE %:search% OR
-        r.person.firstName ILIKE %:search% OR
-        r.person.lastName ILIKE %:search%
-    ))
-    ORDER BY b.dateFiled DESC
-""")
+        SELECT new com.barangay.barangay.lupon.dto.LuponSummaryDTO(
+            b.id,
+            b.blotterNumber,
+            CONCAT(cp.firstName, ' ', cp.lastName),
+            CONCAT(rp.firstName, ' ', rp.lastName),
+            id.natureOfComplaint,
+            b.dateFiled,
+            CAST(b.status AS string)
+        )
+        FROM BlotterCase b
+        JOIN b.complainant c
+        JOIN c.person cp
+        JOIN b.respondent r
+        JOIN r.person rp
+        JOIN b.incidentDetail id
+        WHERE b.department.name = :deptName
+        AND b.status IN :statuses
+        AND (:natureId IS NULL OR id.id = :natureId) 
+        AND (CAST(:startDate AS LocalDateTime) IS NULL OR b.dateFiled >= :startDate)
+        AND (CAST(:endDate AS LocalDateTime) IS NULL OR b.dateFiled <= :endDate)
+        AND (CAST(:search AS String) IS NULL OR (
+            b.blotterNumber ILIKE %:search% OR
+            cp.firstName ILIKE %:search% OR
+            cp.lastName ILIKE %:search% OR
+            rp.firstName ILIKE %:search% OR
+            rp.lastName ILIKE %:search%
+        ))
+        ORDER BY b.dateFiled DESC
+    """)
     Page<LuponSummaryDTO> findLuponSummaryWithFilters(
             @Param("deptName") String deptName,
             @Param("statuses") List<CaseStatus> statuses,
@@ -85,7 +87,6 @@ public interface CaseRepository extends JpaRepository<BlotterCase,Long> {
             "narrativeStatement", "witnesses", "witnesses.person"
     })
     Optional<BlotterCase> findByBlotterNumber(String blotterNumber);
-
 
 
 

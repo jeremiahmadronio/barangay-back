@@ -37,6 +37,9 @@ public class BaranggayProtectionOrder {
     @Column(nullable = false)
     private BpoStatus status = BpoStatus.PENDING;
 
+    @Column(name = "activated_at")
+    private LocalDateTime activatedAt;
+
     @Column(name = "expired_at")
     private LocalDate expiredAt;
 

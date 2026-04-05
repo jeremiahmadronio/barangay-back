@@ -161,7 +161,6 @@ WHERE bc.department.name IN ('BLOTTER', 'LUPONG_TAGAPAMAYAPA')
     LIMIT 1
     """, nativeQuery = true)
     Optional<String> findTopFtrNature(@Param("deptId") Long deptId, @Param("since") LocalDateTime since);
-    // 3. Incident Times for Peak Time Card
     @Query(value = """
     SELECT id.incident_time 
     FROM cases bc 
