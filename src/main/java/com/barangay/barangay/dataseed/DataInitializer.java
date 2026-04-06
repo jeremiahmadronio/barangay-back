@@ -69,8 +69,7 @@ public class DataInitializer implements CommandLineRunner {
         createDeptIfNotFound("KAPITANA");
         createDeptIfNotFound("BCPC");
         createDeptIfNotFound("CLEARANCE");
-        createDeptIfNotFound("LUPONG_TAGAPAMAYAPA"); // Ito yung hinahanap ng seedLuponEmployees
-        createDeptIfNotFound("OPERATIONAL_STAFF");
+        createDeptIfNotFound("LUPONG_TAGAPAMAYAPA");
         createDeptIfNotFound("FTJS");
         createDeptIfNotFound("ROOT_ADMIN");
 
@@ -292,7 +291,6 @@ public class DataInitializer implements CommandLineRunner {
         Department luponDept = departmentRepository.findByName("LUPONG_TAGAPAMAYAPA")
                 .orElseThrow(() -> new RuntimeException("Department 'Lupong Tagapamayapa' not found. Run dept seeding first!"));
 
-        // 2. Master List ng mga Lupon Officials (Base sa screenshots mo)
         List<String[]> luponStaff = Arrays.asList(
                 new String[]{"Bernardino", "Roberto", "Chairman"},
                 new String[]{"Palmario", "Ernesto", "Chairman"},
@@ -326,13 +324,12 @@ public class DataInitializer implements CommandLineRunner {
                         return personRepository.save(p);
                     });
 
-            // 4. DITO ANG IMPORTANTE: Link the Person to the Employee Table
             if (employeeRepository.findByPersonId(person.getId()).isEmpty()) {
                 Employee emp = new Employee();
                 emp.setPerson(person); // Link to identity
                 emp.setDepartment(luponDept); // Link to Lupon Dept
                 emp.setPosition(position); // E.g., "Chairman"
-                emp.setIsActive(true);
+                emp.setStatus(Status.ACTIVE);
 
                 employeeRepository.save(emp);
                 System.out.println("[EMPLOYEE SEEDED] " + firstName + " " + lastName + " as " + position);

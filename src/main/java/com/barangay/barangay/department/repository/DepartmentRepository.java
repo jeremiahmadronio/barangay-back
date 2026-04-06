@@ -14,5 +14,6 @@ public interface DepartmentRepository extends JpaRepository<Department,Long> {
     Optional<Department> findByName(String name);
     Optional<Department> findByNameIgnoreCase(String name);
 
+    long count();
 
 }

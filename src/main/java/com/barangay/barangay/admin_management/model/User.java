@@ -68,6 +68,8 @@ public class User {
     @Column(name = "mfa_expiry")
     private LocalDateTime mfaExpiry;
 
+    @Column(name = "is_new_account")
+    private boolean isNewAccount = false;
 
 
     @ManyToMany(fetch = FetchType.EAGER)

@@ -18,7 +18,7 @@ public enum CaseStatus {
     // 5. Unsuccessful End States
     REFERRED_TO_LUPON,  // Failed sa PB level, pinapasa na sa Lupon
     CERTIFIED_TO_FILE_ACTION,
-    DISMISSED,          // Binawi, kulang sa ebidensya, o hindi sumipot ang complainant
+    DISMISSED,
 
     // 6. Maintenance States
     ARCHIVED,           // Tapos na at matagal na

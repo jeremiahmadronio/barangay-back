@@ -158,7 +158,7 @@ public class ComplaintService {
         if (dto.assignToId() != null) {
             Employee assignedEmployee = employeeRepository.findById(dto.assignToId())
                     .orElseThrow(() -> new RuntimeException("Employee not found."));
-            if (!assignedEmployee.getIsActive()) {
+            if (assignedEmployee.getStatus().equals(Status.INACTIVE)) {
                 throw new RuntimeException("Assigned officer is inactive.");
             }
             blotter.setEmployee(assignedEmployee);

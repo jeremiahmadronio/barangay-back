@@ -1,6 +1,7 @@
 package com.barangay.barangay.employee.model;
 
 import com.barangay.barangay.department.model.Department;
+import com.barangay.barangay.enumerated.Status;
 import com.barangay.barangay.person.model.Person;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -33,8 +34,14 @@ public class Employee {
     @Column(nullable = false,name = "position")
     private String position;
 
-    @Column(nullable = false,name = "is_active")
-    private Boolean isActive = true;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false,name = "status")
+    private Status status;
+
+    @Column(name = "status_remarks")
+    private String statusRemarks;
+
+
 
     @CreationTimestamp
     @Column(updatable = false, nullable = false)
