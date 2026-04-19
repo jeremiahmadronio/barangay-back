@@ -1,0 +1,19 @@
+package com.barangay.barangay.enumerated;
+
+public enum TimelineEventType {
+    CASE_FILED,
+    SUMMON_ISSUED,
+    HEARING_CONDUCTED,
+    HEARING_NOT_SETTLED,
+    CASE_SETTLED,
+    CASE_REFERRED,
+    CASE_DISMISSED,
+    STATUS_CHANGED,
+    NOTE_ADDED,
+    DOCUMENT_GENERATED,
+    ESCALATED,
+    HEARING_FOLLOWUP,
+    INTERVENTION_RECORDED,
+    BPO_ISSUED,
+    CONCILIATION_EXTENDED,
+}
