@@ -158,7 +158,7 @@ public class ClearanceTemplateService {
                 Severity.INFO,
                 "Issued " + template.getCertTitle() + " to " + dto.requestorName(),
                 ipAddress,
-                null, null, savedCert.getId()
+                null, null, "Cert ID: " + savedCert.getId()
         );
 
     }
@@ -228,7 +228,7 @@ public class ClearanceTemplateService {
                 Severity.INFO,
                 "Update Status by " + actor.getPerson().getFirstName() + " " + actor.getPerson().getLastName(),
                 ipAddress,
-                request.remarks(), "Released", cert.getId()
+                request.remarks(), "Released", "Cert ID: " + cert.getId()
         );
     }
 
