@@ -3,6 +3,7 @@ package com.barangay.barangay.auth.service;
 import com.barangay.barangay.audit.service.AuditLogService;
 import com.barangay.barangay.auth.dto.*;
 import com.barangay.barangay.department.model.Department;
+import com.barangay.barangay.enumerated.MfaType;
 import com.barangay.barangay.enumerated.Severity;
 import com.barangay.barangay.enumerated.Status;
 import com.barangay.barangay.security.CustomUserDetails;
@@ -19,6 +20,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -33,9 +35,7 @@ public class AuthenticationService {
     private final AuditLogService auditLogService;
     private final MfaService mfaService;
     private final PasswordEncoder passwordEncoder;
-    private final LoginFailureListener loginFailureListener;
-
-
+    private final TotpService totpService;
 
 
     @Transactional(noRollbackFor = {BadCredentialsException.class, LockedException.class, DisabledException.class})
@@ -46,8 +46,7 @@ public class AuthenticationService {
 
         if (Boolean.TRUE.equals(user.getIsLocked())) {
             if (user.getLockUntil() != null && user.getLockUntil().isAfter(LocalDateTime.now())) {
-
-                long minutesLeft = java.time.temporal.ChronoUnit.MINUTES.between(LocalDateTime.now(), user.getLockUntil());
+                long minutesLeft = ChronoUnit.MINUTES.between(LocalDateTime.now(), user.getLockUntil());
                 minutesLeft = (minutesLeft <= 0) ? 1 : minutesLeft;
 
                 auditLogService.log(
@@ -63,16 +62,22 @@ public class AuthenticationService {
             userRepository.saveAndFlush(user);
         }
 
+        // Check if active
         if (user.getStatus() != Status.ACTIVE) {
+            auditLogService.log(
+                    user, null, "Login Authentication", Severity.WARNING,
+                    "Login attempt on inactive account", ipAddress,
+                    "Account status: " + user.getStatus(), null, null
+            );
             throw new DisabledException("Account is inactive. Contact your administrator.");
         }
 
+        // Authenticate credentials
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.email(), request.password())
             );
         } catch (BadCredentialsException e) {
-
             LocalDateTime now = LocalDateTime.now();
             int attempts = (user.getFailedAttempts() == null ? 0 : user.getFailedAttempts());
 
@@ -86,8 +91,6 @@ public class AuthenticationService {
             user.setLastFailedAttempt(now);
 
             String lockMsg = null;
-
-            // 4.  LOCKING LOGIC
             if (attempts == 3) {
                 user.setIsLocked(true);
                 user.setLockUntil(now.plusMinutes(5));
@@ -104,10 +107,9 @@ public class AuthenticationService {
 
             userRepository.saveAndFlush(user);
 
-            // LOG AUDIT
             auditLogService.log(
                     user, null, "Login Authentication", Severity.WARNING,
-                    (lockMsg != null ? lockMsg : "Failed login attempt " + attempts), ipAddress,
+                    (lockMsg != null ? lockMsg : "Failed login attempt #" + attempts), ipAddress,
                     "Authentication failure", null, null
             );
 
@@ -123,21 +125,21 @@ public class AuthenticationService {
         user.setLockUntil(null);
         user.setLastFailedAttempt(null);
 
-        // Generate MFA
         String code = mfaService.generateCode();
         user.setMfaCode(code);
         user.setMfaExpiry(LocalDateTime.now().plusMinutes(5));
-
         userRepository.save(user);
+
         mfaService.sendMfaEmail(user.getSystemEmail(), code);
 
-        return new LoginResponse("MFA_REQUIRED", user.getId(), user.getRole().getRoleName(), null, null);
+        auditLogService.log(
+                user, null, "Login Authentication", Severity.INFO,
+                "MFA code sent via EMAIL after successful credential check", ipAddress,
+                null, null, null
+        );
+
+        return new LoginResponse("MFA_REQUIRED", user.getId(), user.getRole().getRoleName(), null, null,user.isTotpEnabled());
     }
-
-
-
-
-
 
 
     @Transactional
@@ -145,33 +147,70 @@ public class AuthenticationService {
         User user = userRepository.findByEmailWithDepartments(request.email())
                 .orElseThrow(() -> new UsernameNotFoundException("No account found with this email"));
 
-        if (user.getMfaCode() == null || !user.getMfaCode().equals(request.code())) {
-            throw new BadCredentialsException("Invalid Verification code. Please try again.");
+        // Branch — TOTP or Email OTP
+        boolean usingTotp = Boolean.TRUE.equals(request.usedTotp());
+
+        if (usingTotp) {
+            // TOTP verification
+            if (!user.isTotpEnabled() || user.getTotpSecret() == null) {
+                throw new BadCredentialsException("Authenticator app is not set up for this account.");
+            }
+            if (!totpService.verifyCode(user.getTotpSecret(), request.code())) {
+                auditLogService.log(
+                        user, null, "Login Authentication", Severity.WARNING,
+                        "Invalid TOTP code attempt", ipAddress,
+                        "TOTP verification failed", null, null
+                );
+                throw new BadCredentialsException("Invalid authenticator code. Please try again.");
+            }
+        } else {
+            // Email OTP verification
+            if (user.getMfaCode() == null || !user.getMfaCode().equals(request.code())) {
+                auditLogService.log(
+                        user, null, "Login Authentication", Severity.WARNING,
+                        "Invalid MFA code attempt", ipAddress,
+                        "MFA verification failed", null, null
+                );
+                throw new BadCredentialsException("Invalid verification code. Please try again.");
+            }
+            if (user.getMfaExpiry() == null || user.getMfaExpiry().isBefore(LocalDateTime.now())) {
+                auditLogService.log(
+                        user, null, "Login Authentication", Severity.WARNING,
+                        "Expired MFA code attempt", ipAddress,
+                        "MFA code already expired", null, null
+                );
+                throw new BadCredentialsException("Verification code expired. Please try again.");
+            }
         }
 
-        if (user.getMfaExpiry() == null || user.getMfaExpiry().isBefore(LocalDateTime.now())) {
-            throw new BadCredentialsException("Verification code expired. Please try again.");
-        }
-
+        // Clear email MFA state (safe to clear kahit TOTP ang ginamit)
         user.setMfaCode(null);
         user.setMfaExpiry(null);
         userRepository.save(user);
 
+        // New account — force password change
         if (user.isNewAccount()) {
+            auditLogService.log(
+                    user, null, "Login Authentication", Severity.INFO,
+                    "New account — password change required", ipAddress,
+                    null, null, null
+            );
             return new LoginResponse(
                     "CHANGE_PASSWORD_REQUIRED",
                     user.getId(),
                     user.getRole().getRoleName(),
                     null,
-                    null
+                    null,
+                    user.isTotpEnabled()
             );
         }
 
-
+        // Build departments
         Set<String> departments = user.getAllowedDepartments().stream()
                 .map(Department::getName)
                 .collect(Collectors.toSet());
 
+        // Build JWT
         HashMap<String, Object> extraClaims = new HashMap<>();
         extraClaims.put("role", user.getRole().getRoleName());
         extraClaims.put("userId", user.getId());
@@ -183,16 +222,26 @@ public class AuthenticationService {
         userRepository.save(user);
 
         auditLogService.log(
-                user,
-                null,
-                "Login Authentication",
-                Severity.INFO,
-                "User — " + user.getUsername() + " Successfully logged in via MFA",
-                ipAddress,
+                user, null, "Login Authentication", Severity.INFO,
+                "User — " + user.getUsername() + " successfully logged in via " + (usingTotp ? "TOTP" : "EMAIL"), ipAddress,
                 null, null, null
         );
-        return new LoginResponse("SUCCESS", user.getId(), user.getRole().getRoleName(), departments, jwtToken);
+
+        return new LoginResponse(
+                "SUCCESS",
+                user.getId(),
+                user.getRole().getRoleName(),
+                departments,
+                jwtToken,
+                user.isTotpEnabled()
+        );
     }
+
+
+
+
+
+
 
 
     @Transactional
@@ -233,9 +282,8 @@ public class AuthenticationService {
                 ipAddress,
                 null, null, null
         );
-        return new LoginResponse("SUCCESS", user.getId(), user.getRole().getRoleName(), departments, jwtToken);
+        return new LoginResponse("SUCCESS", user.getId(), user.getRole().getRoleName(), departments, jwtToken,user.isTotpEnabled());
     }
-
 
     @Transactional
     public void initiateForgotPassword(String email) {

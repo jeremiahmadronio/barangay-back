@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Size;
 
 public record MfaRequest (
         @NotBlank @Email String email,
-        @NotBlank @Size(min = 6, max = 6) String code
+        @NotBlank @Size(min = 6, max = 6) String code,
+        Boolean usedTotp
 ){
 }

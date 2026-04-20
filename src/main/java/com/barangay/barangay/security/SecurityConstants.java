@@ -19,7 +19,7 @@ public class SecurityConstants {
 
 
     public static final String[] ADMIN_ENDPOINTS = {
-            "/api/v1/user-management/**",
+            "/api/v1/user-management/stats",
 
 
     };
@@ -27,7 +27,7 @@ public class SecurityConstants {
     public static final String[] ROOT_ADMIN_ENDPOINTS = {
             //audit endpoint
             "/api/v1/audit/**",
-            "/api/v1/user-management/**",
+            "/api/v1/user-management/stats/global",
             //departments endpoint
             "/api/v1/departments/options",
 

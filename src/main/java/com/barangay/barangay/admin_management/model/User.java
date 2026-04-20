@@ -2,6 +2,7 @@
 package com.barangay.barangay.admin_management.model;
 
 import com.barangay.barangay.department.model.Department;
+import com.barangay.barangay.enumerated.MfaType;
 import com.barangay.barangay.permission.model.Permission;
 import com.barangay.barangay.person.model.Person;
 import com.barangay.barangay.role.model.Role;
@@ -39,6 +40,10 @@ public class User {
     private String password;
     @Column(unique = true, columnDefinition = "TEXT")
     private String systemEmail;
+
+    @Column
+    private String systemBackupEmail;
+
     @Column
     private Integer failedAttempts;
 
@@ -77,6 +82,22 @@ public class User {
 
     @Column(name = "is_new_account")
     private boolean isNewAccount = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "mfa_type", nullable = false)
+    private MfaType mfaType = MfaType.EMAIL;
+
+
+    @Column(name = "totp_secret")
+    private String totpSecret;
+
+    @Column(name = "totp_enabled")
+    private boolean totpEnabled = false;
+
+    @ElementCollection
+    @CollectionTable(name = "user_recovery_codes", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "recovery_code")
+    private Set<String> recoveryCodes;
 
 
     @ManyToMany(fetch = FetchType.EAGER)

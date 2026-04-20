@@ -8,5 +8,6 @@ public record LoginResponse(
         UUID userId,
         String role,
         Set<String> departments,
-        String token
+        String token,
+        boolean totpEnabled
 ){}
