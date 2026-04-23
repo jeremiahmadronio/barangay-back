@@ -92,7 +92,7 @@ public class User {
     private String totpSecret;
 
     @Column(name = "totp_enabled")
-    private Boolean totpEnabled = false;
+    private boolean totpEnabled = false;
 
     @ElementCollection
     @CollectionTable(name = "user_recovery_codes", joinColumns = @JoinColumn(name = "user_id"))
