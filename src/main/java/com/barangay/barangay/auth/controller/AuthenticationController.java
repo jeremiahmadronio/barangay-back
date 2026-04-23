@@ -49,25 +49,47 @@
 
 
 
-        @GetMapping("/setup")
-        public ResponseEntity<MfaSetupResponse> getSetupDetails(
-                @AuthenticationPrincipal CustomUserDetails userDetails) {
-            return ResponseEntity.ok(mfaSetupService.initiateTotpSetup(userDetails.user().getId()));
+            @GetMapping("/setup")
+            public ResponseEntity<MfaSetupResponse> getSetupDetails(
+                    @AuthenticationPrincipal CustomUserDetails userDetails) {
+                return ResponseEntity.ok(mfaSetupService.initiateTotpSetup(userDetails.user().getId()));
+            }
+
+            @PostMapping("/confirm")
+            public ResponseEntity<MfaEnableSuccessResponse> confirmSetup(
+                    @AuthenticationPrincipal CustomUserDetails userDetails,
+                    @RequestBody MfaConfirmationRequest request,
+                    jakarta.servlet.http.HttpServletRequest httpRequest) {
+
+                String ipAddress = IpAddressUtils.getClientIp(httpRequest);
+                MfaEnableSuccessResponse response = mfaSetupService.confirmAndEnableTotp(
+                        userDetails.user().getId(),
+                        request,
+                        ipAddress
+                );
+                return ResponseEntity.ok(response);
+            }
+
+
+        @PostMapping("/backup-email/initiate")
+        public ResponseEntity<Void> initiateBackupSetup(
+                @RequestParam String primaryEmail,
+                @RequestParam String backupEmail,
+                HttpServletRequest servletRequest) {
+            String ipAddress = IpAddressUtils.getClientIp(servletRequest);
+            authenticationService.initiateBackupEmailSetup(primaryEmail, backupEmail,ipAddress);
+            return ResponseEntity.ok().build();
         }
 
-        @PostMapping("/confirm")
-        public ResponseEntity<MfaEnableSuccessResponse> confirmSetup(
-                @AuthenticationPrincipal CustomUserDetails userDetails,
-                @RequestBody MfaConfirmationRequest request,
-                jakarta.servlet.http.HttpServletRequest httpRequest) {
-
-            String ipAddress = httpRequest.getRemoteAddr();
-            MfaEnableSuccessResponse response = mfaSetupService.confirmAndEnableTotp(
-                    userDetails.user().getId(),
-                    request,
-                    ipAddress
-            );
-            return ResponseEntity.ok(response);
+        @PostMapping("/backup-email/verify")
+        public ResponseEntity<Void> verifyBackupSetup(
+                @RequestParam String primaryEmail,
+                @RequestParam String backupEmail,
+                @RequestParam String code,
+                HttpServletRequest httpRequest) {
+            String ipAddress = IpAddressUtils.getClientIp(httpRequest);
+            authenticationService.verifyAndSaveBackupEmail(primaryEmail, backupEmail, code, ipAddress);
+            return ResponseEntity.ok().build();
         }
 
 

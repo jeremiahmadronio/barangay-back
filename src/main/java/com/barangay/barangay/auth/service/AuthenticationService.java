@@ -44,48 +44,37 @@ public class AuthenticationService {
         User user = userRepository.findBySystemEmail(request.email())
                 .orElseThrow(() -> new UsernameNotFoundException("No account found with this email"));
 
+        // --- 1. ACCOUNT LOCK CHECK ---
         if (Boolean.TRUE.equals(user.getIsLocked())) {
             if (user.getLockUntil() != null && user.getLockUntil().isAfter(LocalDateTime.now())) {
-                long minutesLeft = ChronoUnit.MINUTES.between(LocalDateTime.now(), user.getLockUntil());
-                minutesLeft = (minutesLeft <= 0) ? 1 : minutesLeft;
+                long minutesLeft = Math.max(1, ChronoUnit.MINUTES.between(LocalDateTime.now(), user.getLockUntil()));
 
-                auditLogService.log(
-                        user, null, "Login Authentication", Severity.WARNING,
-                        "Login attempt on locked account", ipAddress,
-                        "Account is still locked until " + user.getLockUntil(), null, null
-                );
+                auditLogService.log(user, null, "Login Authentication", Severity.WARNING,
+                        "Attempt on locked account", ipAddress, "Locked until: " + user.getLockUntil(), null, null);
+
                 throw new LockedException("Account is temporarily locked. Try again in " + minutesLeft + " minutes.");
             }
-
+            // Unlock if time expired
             user.setIsLocked(false);
             user.setLockUntil(null);
             userRepository.saveAndFlush(user);
         }
 
-        // Check if active
+        // --- 2. STATUS CHECK ---
         if (user.getStatus() != Status.ACTIVE) {
-            auditLogService.log(
-                    user, null, "Login Authentication", Severity.WARNING,
-                    "Login attempt on inactive account", ipAddress,
-                    "Account status: " + user.getStatus(), null, null
-            );
+            auditLogService.log(user, null, "Login Authentication", Severity.WARNING,
+                    "Attempt on inactive account", ipAddress, "Status: " + user.getStatus(), null, null);
             throw new DisabledException("Account is inactive. Contact your administrator.");
         }
 
-        // Authenticate credentials
+        // --- 3. CREDENTIAL VERIFICATION & LOCKING LOGIC ---
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.email(), request.password())
             );
         } catch (BadCredentialsException e) {
             LocalDateTime now = LocalDateTime.now();
-            int attempts = (user.getFailedAttempts() == null ? 0 : user.getFailedAttempts());
-
-            if (user.getLastFailedAttempt() != null && user.getLastFailedAttempt().isBefore(now.minusMinutes(30))) {
-                attempts = 1;
-            } else {
-                attempts++;
-            }
+            int attempts = (user.getFailedAttempts() == null ? 0 : user.getFailedAttempts()) + 1;
 
             user.setFailedAttempts(attempts);
             user.setLastFailedAttempt(now);
@@ -102,24 +91,18 @@ public class AuthenticationService {
             } else if (attempts >= 10) {
                 user.setIsLocked(true);
                 user.setLockUntil(now.plusHours(24));
-                lockMsg = "Account locked for 24 hours (10th failed attempt)";
+                lockMsg = "Account locked for 24 hours (10+ failed attempts)";
             }
 
             userRepository.saveAndFlush(user);
+            auditLogService.log(user, null, "Login Authentication", Severity.WARNING,
+                    (lockMsg != null ? lockMsg : "Failed attempt #" + attempts), ipAddress, "Auth failure", null, null);
 
-            auditLogService.log(
-                    user, null, "Login Authentication", Severity.WARNING,
-                    (lockMsg != null ? lockMsg : "Failed login attempt #" + attempts), ipAddress,
-                    "Authentication failure", null, null
-            );
-
-            if (user.getIsLocked()) {
-                throw new LockedException(lockMsg + ". Please wait before trying again.");
-            }
-
+            if (user.getIsLocked()) throw new LockedException(lockMsg);
             throw new BadCredentialsException("Invalid email or password. Attempt " + attempts + ".");
         }
 
+        // --- 4. SUCCESS: RESET & SEND PRIMARY EMAIL OTP ---
         user.setFailedAttempts(0);
         user.setIsLocked(false);
         user.setLockUntil(null);
@@ -132,85 +115,87 @@ public class AuthenticationService {
 
         mfaService.sendMfaEmail(user.getSystemEmail(), code);
 
-        auditLogService.log(
-                user, null, "Login Authentication", Severity.INFO,
-                "MFA code sent via EMAIL after successful credential check", ipAddress,
-                null, null, null
-        );
+        auditLogService.log(user, null, "Login Authentication", Severity.INFO,
+                "OTP sent to primary email", ipAddress, null, null, null);
 
-        return new LoginResponse("MFA_REQUIRED", user.getId(), user.getRole().getRoleName(), null, null,user.isTotpEnabled());
+        return new LoginResponse(
+                "MFA_REQUIRED",
+                user.getId(),
+                user.getRole().getRoleName(),
+                null,
+                null,
+                user.isTotpEnabled(),
+                user.getSystemBackupEmail() != null
+        );
     }
 
 
     @Transactional
     public LoginResponse verifyMfa(MfaRequest request, String ipAddress) {
-        User user = userRepository.findByEmailWithDepartments(request.email())
-                .orElseThrow(() -> new UsernameNotFoundException("No account found with this email"));
+        User user = userRepository.findBySystemEmail(request.email())
+                .orElseThrow(() -> new UsernameNotFoundException("No account found with this email: " + request.email()));
 
-        // Branch — TOTP or Email OTP
-        boolean usingTotp = Boolean.TRUE.equals(request.usedTotp());
+        boolean isVerified = false;
 
-        if (usingTotp) {
-            // TOTP verification
-            if (!user.isTotpEnabled() || user.getTotpSecret() == null) {
-                throw new BadCredentialsException("Authenticator app is not set up for this account.");
+
+        switch (request.type()) {
+            case TOTP -> {
+                if (!user.isTotpEnabled() || user.getTotpSecret() == null) {
+                    throw new BadCredentialsException("Authenticator app is not set up for this account.");
+                }
+                isVerified = totpService.verifyCode(user.getTotpSecret(), request.code());
             }
-            if (!totpService.verifyCode(user.getTotpSecret(), request.code())) {
-                auditLogService.log(
-                        user, null, "Login Authentication", Severity.WARNING,
-                        "Invalid TOTP code attempt", ipAddress,
-                        "TOTP verification failed", null, null
-                );
-                throw new BadCredentialsException("Invalid authenticator code. Please try again.");
+
+            case RECOVERY -> {
+                if (user.getRecoveryCodes() != null && user.getRecoveryCodes().contains(request.code())) {
+                    user.getRecoveryCodes().remove(request.code());
+                    isVerified = true;
+                }
             }
-        } else {
-            // Email OTP verification
-            if (user.getMfaCode() == null || !user.getMfaCode().equals(request.code())) {
-                auditLogService.log(
-                        user, null, "Login Authentication", Severity.WARNING,
-                        "Invalid MFA code attempt", ipAddress,
-                        "MFA verification failed", null, null
-                );
-                throw new BadCredentialsException("Invalid verification code. Please try again.");
+
+            case EMAIL, BACKUP_EMAIL -> {
+                isVerified = (user.getMfaCode() != null &&
+                        user.getMfaCode().equals(request.code()) &&
+                        user.getMfaExpiry().isAfter(LocalDateTime.now()));
             }
-            if (user.getMfaExpiry() == null || user.getMfaExpiry().isBefore(LocalDateTime.now())) {
-                auditLogService.log(
-                        user, null, "Login Authentication", Severity.WARNING,
-                        "Expired MFA code attempt", ipAddress,
-                        "MFA code already expired", null, null
-                );
-                throw new BadCredentialsException("Verification code expired. Please try again.");
-            }
+
+            default -> throw new BadCredentialsException("Unsupported MFA Type.");
         }
 
-        // Clear email MFA state (safe to clear kahit TOTP ang ginamit)
+        if (!isVerified) {
+            auditLogService.log(user, null, "Login Authentication", Severity.WARNING,
+                    "Failed MFA verification attempt", ipAddress,
+                    "Method: " + request.type(), null, "User ID: " + user.getId());
+
+            throw new BadCredentialsException("Invalid or expired verification code. Please try again.");
+        }
+
         user.setMfaCode(null);
         user.setMfaExpiry(null);
+        user.setFailedAttempts(0); // I-reset ang failed attempts dahil successful na ang login sequence
+        user.setIsLocked(false);
+        user.setLockUntil(null);
+        user.setLastLoginAt(LocalDateTime.now());
         userRepository.save(user);
 
-        // New account — force password change
+        // --- 5. CHECK IF NEW ACCOUNT ---
         if (user.isNewAccount()) {
-            auditLogService.log(
-                    user, null, "Login Authentication", Severity.INFO,
-                    "New account — password change required", ipAddress,
-                    null, null, null
-            );
             return new LoginResponse(
                     "CHANGE_PASSWORD_REQUIRED",
                     user.getId(),
                     user.getRole().getRoleName(),
                     null,
                     null,
-                    user.isTotpEnabled()
+                    user.isTotpEnabled(),
+                    user.getSystemBackupEmail() != null
             );
         }
 
-        // Build departments
+        // --- 6. JWT GENERATION ---
         Set<String> departments = user.getAllowedDepartments().stream()
                 .map(Department::getName)
                 .collect(Collectors.toSet());
 
-        // Build JWT
         HashMap<String, Object> extraClaims = new HashMap<>();
         extraClaims.put("role", user.getRole().getRoleName());
         extraClaims.put("userId", user.getId());
@@ -218,13 +203,73 @@ public class AuthenticationService {
 
         String jwtToken = jwtService.generateToken(extraClaims, new CustomUserDetails(user));
 
+        // Audit Success
+        auditLogService.log(user, null, "Login Authentication", Severity.INFO,
+                "Successful login via " + request.type(), ipAddress,
+                null, null, "Session started");
+
+        // --- 7. FINAL RESPONSE ---
+        return new LoginResponse(
+                "SUCCESS",
+                user.getId(),
+                user.getRole().getRoleName(),
+                departments,
+                jwtToken,
+                user.isTotpEnabled(),
+                user.getSystemBackupEmail() != null
+        );
+    }
+
+
+
+    @Transactional
+    public LoginResponse changePasswordNewAccount(ChangePasswordRequest request, String ipAddress) {
+        // 1. Fetch User - Gamitin ang systemEmail para consistent sa repository
+        User user = userRepository.findBySystemEmail(request.email())
+                .orElseThrow(() -> new UsernameNotFoundException("No account found with this email: " + request.email()));
+
+        // 2. Validation: Dapat 'new account' lang ang pwedeng dumaan dito
+        if (!user.isNewAccount()) {
+            auditLogService.log(user, null, "SECURITY", Severity.WARNING,
+                    "Unauthorized password change attempt on existing account", ipAddress, null, null, null);
+            throw new AccessDeniedException("This endpoint is strictly for new account initialization.");
+        }
+
+        // 3. Password Match Check
+        if (!request.newPassword().equals(request.confirmPassword())) {
+            throw new IllegalArgumentException("Passwords do not match. Please re-type your new password.");
+        }
+
+        // 4. Update Account Security
+        user.setPassword(passwordEncoder.encode(request.newPassword()));
+        user.setNewAccount(false); // Mark as not new anymore
         user.setLastLoginAt(LocalDateTime.now());
+        user.setUsername(request.username());
         userRepository.save(user);
 
+        // 5. Prepare Response Data (Departments & Claims)
+        Set<String> departments = user.getAllowedDepartments().stream()
+                .map(Department::getName)
+                .collect(Collectors.toSet());
+
+        HashMap<String, Object> extraClaims = new HashMap<>();
+        extraClaims.put("role", user.getRole().getRoleName());
+        extraClaims.put("userId", user.getId());
+        extraClaims.put("depts", departments);
+
+        // 6. Generate JWT Session
+        String jwtToken = jwtService.generateToken(extraClaims, new CustomUserDetails(user));
+
         auditLogService.log(
-                user, null, "Login Authentication", Severity.INFO,
-                "User — " + user.getUsername() + " successfully logged in via " + (usingTotp ? "TOTP" : "EMAIL"), ipAddress,
-                null, null, null
+                user,
+                null,
+                "Login Authentication",
+                Severity.INFO,
+                "New user initialization: Password set successfully",
+                ipAddress,
+                "Account activated",
+                "isNewAccount: true -> false",
+                "User ID: " + user.getId().toString()
         );
 
         return new LoginResponse(
@@ -233,56 +278,46 @@ public class AuthenticationService {
                 user.getRole().getRoleName(),
                 departments,
                 jwtToken,
-                user.isTotpEnabled()
+                user.isTotpEnabled(),
+                user.getSystemBackupEmail() != null
         );
     }
 
 
-
-
-
-
-
-
     @Transactional
-    public LoginResponse changePasswordNewAccount(ChangePasswordRequest request, String ipAddress) {
-        User user = userRepository.findByEmailWithDepartments(request.email())
-                .orElseThrow(() -> new UsernameNotFoundException("No account found with this email"));
+    public void initiateBackupEmailSetup(String primaryEmail, String backupEmail,String ipAddress) {
+        User user = userRepository.findBySystemEmail(primaryEmail)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-        if (!user.isNewAccount()) {
-            throw new AccessDeniedException("This endpoint is for new accounts only.");
-        }
-
-        if (!request.newPassword().equals(request.confirmPassword())) {
-            throw new IllegalArgumentException("Passwords do not match.");
-        }
-
-        user.setPassword(passwordEncoder.encode(request.newPassword()));
-        user.setNewAccount(false);
-        user.setLastLoginAt(LocalDateTime.now());
+        String code = mfaService.generateCode();
+        user.setMfaCode(code);
+        user.setMfaExpiry(LocalDateTime.now().plusMinutes(5));
         userRepository.save(user);
 
-        Set<String> departments = user.getAllowedDepartments().stream()
-                .map(Department::getName)
-                .collect(Collectors.toSet());
+        mfaService.sendMfaEmail(backupEmail, code);
 
-        HashMap<String, Object> extraClaims = new HashMap<>();
-        extraClaims.put("role", user.getRole().getRoleName());
-        extraClaims.put("userId", user.getId());
-        extraClaims.put("depts", departments);
+        auditLogService.log(user, null, "SECURITY", Severity.INFO,
+                "BACKUP_EMAIL_VERIFICATION_SENT", ipAddress, "Code sent to: " + backupEmail, null, null);
+    }
 
-        String jwtToken = jwtService.generateToken(extraClaims, new CustomUserDetails(user));
+    // STEP B: Verify code and finalize backup email
+    @Transactional
+    public void verifyAndSaveBackupEmail(String primaryEmail, String backupEmail, String code,String ipAddress) {
+        User user = userRepository.findBySystemEmail(primaryEmail).orElseThrow();
 
-        auditLogService.log(
-                user,
-                null,
-                "Login Authentication",
-                Severity.INFO,
-                "User set password for new account",
-                ipAddress,
-                null, null, null
-        );
-        return new LoginResponse("SUCCESS", user.getId(), user.getRole().getRoleName(), departments, jwtToken,user.isTotpEnabled());
+        if (user.getMfaCode() == null || !user.getMfaCode().equals(code) ||
+                user.getMfaExpiry().isBefore(LocalDateTime.now())) {
+            throw new BadCredentialsException("Invalid or expired verification code.");
+        }
+
+        // Success - Save the backup email
+        user.setSystemBackupEmail(backupEmail);
+        user.setMfaCode(null); // Clear code
+        user.setMfaExpiry(null);
+        userRepository.save(user);
+
+        auditLogService.log(user, null, "SECURITY", Severity.INFO,
+                "BACKUP_EMAIL_UPDATED", ipAddress, "Backup email set to: " + backupEmail, null, null);
     }
 
     @Transactional

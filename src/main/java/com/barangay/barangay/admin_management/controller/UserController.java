@@ -116,6 +116,16 @@ import java.util.UUID;
         return ResponseEntity.ok(userService.isEmailTaken(email));
     }
 
+    @GetMapping("/check-backup")
+    public ResponseEntity<Boolean> checkBackupEmailAvailability(@RequestParam String email) {
+        return ResponseEntity.ok(userService.isBackupEmailTaken(email));
+    }
+
+    @GetMapping("/check-username")
+    public ResponseEntity<Boolean> checkUsernameAvailability(@RequestParam String username) {
+        return ResponseEntity.ok(userService.isUsernameTaken(username));
+    }
+
 
         @PatchMapping("/{userId}/lock")
         public ResponseEntity<String> toggleUserLock(

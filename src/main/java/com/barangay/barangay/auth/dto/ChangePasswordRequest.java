@@ -10,5 +10,6 @@ public record ChangePasswordRequest(
         @NotBlank @Size(min = 8, message = "Password must be at least 8 characters")
         String newPassword,
         @NotBlank
-        String confirmPassword
+        String confirmPassword,
+        String username
 ) {}

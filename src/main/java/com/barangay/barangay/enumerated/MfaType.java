@@ -1,6 +1,8 @@
 package com.barangay.barangay.enumerated;
 
 public enum MfaType {
-    EMAIL,
-    TOTP
+    EMAIL,          // Primary Email
+    BACKUP_EMAIL,   // Backup Email
+    TOTP,           // Authenticator App
+    RECOVERY
 }

@@ -252,6 +252,9 @@ public class DataInitializer implements CommandLineRunner {
                     return userRepository.save(root);
                 });
 
+
+
+
         if (auditLogRepository.count() == 0) {
             System.out.println("Starting Audit Log Seeding for Dashboard Testing...");
 

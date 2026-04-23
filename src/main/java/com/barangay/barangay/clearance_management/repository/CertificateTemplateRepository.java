@@ -70,4 +70,11 @@ public interface CertificateTemplateRepository extends JpaRepository<Certificate
             "ORDER BY COUNT(i.id) DESC")
     List<TopTemplateResponseDTO> findTopTemplates(Pageable pageable);
 
+
+    @Query(value = "SELECT cert_title FROM certificate_template " +
+            "WHERE has_archive = true " +
+            "ORDER BY updated_at DESC LIMIT 1",
+            nativeQuery = true)
+    String findLatestArchivedTemplateName();
+
 }

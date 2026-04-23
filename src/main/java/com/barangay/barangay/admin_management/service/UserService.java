@@ -65,6 +65,21 @@ public class UserService {
         return userRepository.existsBySystemEmail(email.trim());
     }
 
+    @Transactional(readOnly = true)
+    public boolean isBackupEmailTaken(String email) {
+        if (email == null || email.isBlank()) return false;
+        return userRepository.existsBySystemBackupEmail(email.trim());
+    }
+
+
+    @Transactional(readOnly = true)
+    public boolean isUsernameTaken(String username) {
+        if (username == null || username.isBlank()) {
+            return false;
+        }
+        return userRepository.existsByUsernameIgnoreCase(username.trim());
+    }
+
     @Transactional
     public void createAdminAccount(CreateAdmin request, User actor, String ipAddress) {
         Person person = personRepository.findById(request.personId())
@@ -399,66 +414,99 @@ public class UserService {
 
 
 
-
     @Transactional(readOnly = true)
     public UserSettingsPreview getMySettings(User currentUser) {
         return new UserSettingsPreview(
                 currentUser.getId(),
+                currentUser.getPerson().getPhoto(),
                 currentUser.getUsername(),
-                currentUser.getSystemEmail(),
                 currentUser.getPerson().getFirstName(),
                 currentUser.getPerson().getLastName(),
-                currentUser.getPerson().getContactNumber()
+                currentUser.getSystemEmail(),
+                currentUser.getPerson().getContactNumber(),
+                currentUser.getRole().getRoleName(),
+                currentUser.getSystemBackupEmail(),
+                currentUser.getMfaType(),
+                currentUser.isTotpEnabled(),
+                currentUser.getCreatedAt(),
+                currentUser.getLastLoginAt()
         );
     }
-
 
     @Transactional
     public void updateMySettings(User user, UserSettings dto, String ipAddress) {
         User managedUser = userRepository.findById(user.getId())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+
+
         Person person = managedUser.getPerson();
-
         Map<String, Object> oldData = new LinkedHashMap<>();
-        oldData.put("firstName", person.getFirstName());
-        oldData.put("lastName", person.getLastName());
-        oldData.put("email", managedUser.getSystemEmail());
-        oldData.put("contactNumber", person.getContactNumber());
+        Map<String, Object> newData = new LinkedHashMap<>();
 
-        person.setFirstName(dto.firstName());
-        person.setLastName(dto.lastName());
-        person.setContactNumber(dto.contactNumber());
-        person.setEmail(dto.email());
+        // 2. Selective Update: Person Details
+        if (dto.firstName() != null && !dto.firstName().isBlank()) {
+            oldData.put("firstName", person.getFirstName());
+            person.setFirstName(dto.firstName());
+            newData.put("firstName", dto.firstName());
+        }
+        if (dto.lastName() != null && !dto.lastName().isBlank()) {
+            oldData.put("lastName", person.getLastName());
+            person.setLastName(dto.lastName());
+            newData.put("lastName", dto.lastName());
+        }
+        if (dto.contactNumber() != null && !dto.contactNumber().isBlank()) {
+            oldData.put("contactNumber", person.getContactNumber());
+            person.setContactNumber(dto.contactNumber());
+            newData.put("contactNumber", dto.contactNumber());
+        }
+        if (dto.photo() != null && dto.photo().length > 0) {
+            person.setPhoto(dto.photo()); // Photo usually updated as whole
+        }
 
-        managedUser.setSystemEmail(dto.email());
+        if (dto.username() != null && !dto.username().isBlank() && !dto.username().equals(managedUser.getUsername())) {
+            if (userRepository.existsByUsername(dto.username())) {
+                throw new RuntimeException("Username '" + dto.username() + "' is already taken.");
+            }
+            oldData.put("username", managedUser.getUsername());
+            managedUser.setUsername(dto.username());
+            newData.put("username", dto.username());
+        }
 
-        if (dto.password() != null && !dto.password().isBlank()) {
-            managedUser.setPassword(passwordEncoder.encode(dto.password()));
+        if (dto.systemEmail() != null && !dto.systemEmail().isBlank() && !dto.systemEmail().equalsIgnoreCase(managedUser.getSystemEmail())) {
+            if (userRepository.existsBySystemEmail(dto.systemEmail())) {
+                throw new RuntimeException("Email '" + dto.systemEmail() + "' is already taken.");
+            }
+            oldData.put("email", managedUser.getSystemEmail());
+            managedUser.setSystemEmail(dto.systemEmail());
+            newData.put("email", dto.systemEmail());
+        }
+
+        if (dto.systemBackupEmail() != null && !dto.systemBackupEmail().isBlank()) {
+            managedUser.setSystemBackupEmail(dto.systemBackupEmail());
+        }
+
+        if (dto.newPassword() != null && !dto.newPassword().isBlank()) {
+            managedUser.setPassword(passwordEncoder.encode(dto.newPassword()));
+            newData.put("password", "CHANGED");
         }
 
         userRepository.save(managedUser);
 
-        Map<String, Object> newData = new LinkedHashMap<>();
-        newData.put("firstName", dto.firstName());
-        newData.put("lastName", dto.lastName());
-        newData.put("email", dto.email());
-        newData.put("contactNumber", dto.contactNumber());
-
-        auditLogService.log(
-                managedUser,
-                managedUser.getRole().getRoleName().equalsIgnoreCase("ROOT_ADMIN")
-                        ? Departments.ROOT_ADMIN : Departments.ADMINISTRATION,
-                "USER_SETTINGS",
-                Severity.INFO,
-                "UPDATE_SELF_PROFILE",
-                ipAddress,
-                String.format("User %s (%s %s) updated their own profile details.",
-                        managedUser.getUsername(), person.getFirstName(), person.getLastName()),
-                oldData,
-                newData
-        );
+        if (!newData.isEmpty()) {
+            auditLogService.log(
+                    managedUser,
+                    managedUser.getRole().getRoleName().equalsIgnoreCase("ROOT_ADMIN")
+                            ? Departments.ROOT_ADMIN : Departments.ADMINISTRATION,
+                    "USER_SETTINGS",
+                    Severity.INFO,
+                    "PARTIAL_PROFILE_UPDATE",
+                    ipAddress,
+                    String.format("User %s updated specific profile fields.", managedUser.getUsername()),
+                    oldData,
+                    newData
+            );
+        }
     }
-
 
 }

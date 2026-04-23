@@ -289,7 +289,7 @@ public class ClearanceTemplateService {
         long totalIssued = issuedCertificateRepository.countTotalArchiveIssued();
         BigDecimal lostRev = issuedCertificateRepository.sumLostRevenue();
         long totalTemplate = certificateTemplateRepository.countTotalArchiveTemplate();
-        String mostArchived = issuedCertificateRepository.findMostArchivedTemplateName();
+        String mostArchived = certificateTemplateRepository.findLatestArchivedTemplateName();
 
         return new ArchiveStatsResponseDTO(
                 totalIssued,

@@ -22,6 +22,9 @@ public interface Root_AdminRepository extends JpaRepository<User, UUID> {
 
     boolean existsByUsername(String username);
 
+    boolean existsBySystemBackupEmail(String email);
+
+
     boolean existsBySystemEmail(String email);
 
     Optional<User> findBySystemEmail(String email);
@@ -104,4 +107,6 @@ public interface Root_AdminRepository extends JpaRepository<User, UUID> {
 """)
     long countUsersExcludingRoles(@Param("excludedRoles") List<String> excludedRoles);
 
+
+    boolean existsByUsernameIgnoreCase(String username);
 }

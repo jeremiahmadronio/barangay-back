@@ -11,8 +11,7 @@ public class SecurityConstants {
             "/error",
             "/api/v1/users/{UserId}/lock",
             "/api/v1/users/update-status",
-            "/api/v1/users/settings-preview",
-            "/api/v1/users/update-settings",
+
 
 
     };

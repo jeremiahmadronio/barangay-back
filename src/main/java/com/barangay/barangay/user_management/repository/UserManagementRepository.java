@@ -32,6 +32,7 @@ public interface UserManagementRepository extends JpaRepository<User, UUID> {
         JOIN u.allowedDepartments d 
         JOIN u.role r
         WHERE r.roleName NOT IN :excludedDepts
+           AND u.status <> com.barangay.barangay.enumerated.Status.ARCHIVED
     """)
         Long countUsersExcludingAdminDepts(@Param("excludedDepts") List<String> excludedDepts);
 
@@ -46,7 +47,11 @@ public interface UserManagementRepository extends JpaRepository<User, UUID> {
     """)
         Long countAllGlobal(@Param("excludedRoles") List<String> excludedRoles);
 
-
+    @Query("SELECT COUNT(u) FROM User u WHERE u.status = :status AND u.role.roleName NOT IN :excludedRoles")
+    long countByStatusAndRoleNameNotIn(
+            @Param("status") Status status,
+            @Param("excludedRoles") List<String> excludedRoles
+    );
         @Query("""
         SELECT COUNT(u) FROM User u 
         JOIN u.role r 
@@ -70,13 +75,14 @@ public interface UserManagementRepository extends JpaRepository<User, UUID> {
 
 
     @Query("""
-        SELECT COUNT(DISTINCT u) FROM User u
-        JOIN u.allowedDepartments d
-        LEFT JOIN u.role r
-        WHERE d.id IN :deptIds 
-        AND u.id != :currentUserId 
-        AND r.roleName NOT IN :excludedRoles
-    """)
+    SELECT COUNT(DISTINCT u) FROM User u
+    JOIN u.allowedDepartments d
+    LEFT JOIN u.role r
+    WHERE d.id IN :deptIds 
+    AND u.id != :currentUserId 
+    AND r.roleName NOT IN :excludedRoles
+    AND u.status != 'ARCHIVED'
+""")
     long countUsersByDepartments(
             @Param("deptIds") Set<Long> deptIds,
             @Param("currentUserId") UUID currentUserId,

@@ -41,17 +41,14 @@ public class MfaSetupService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // Verify if the code from the app matches the secret
         boolean isValid = totpService.verifyCode(request.secret(), request.code());
         if (!isValid) {
             throw new BadCredentialsException("Invalid verification code. Setup failed.");
         }
 
-        // Success! Save to database
         user.setTotpSecret(request.secret());
         user.setTotpEnabled(true);
 
-        // Generate Recovery Codes (Importante para hindi ma-lockout!)
         Set<String> recoveryCodes = generateRecoveryCodes();
         user.setRecoveryCodes(recoveryCodes);
 
@@ -67,7 +64,6 @@ public class MfaSetupService {
     }
 
     private Set<String> generateRecoveryCodes() {
-        // Simple random generator for 8-character codes
         return java.util.stream.Stream.generate(() ->
                         java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase())
                 .limit(10)
