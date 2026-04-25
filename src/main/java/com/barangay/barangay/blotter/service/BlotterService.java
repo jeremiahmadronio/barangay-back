@@ -5,6 +5,7 @@ import com.barangay.barangay.audit.service.AuditLogService;
 import com.barangay.barangay.blotter.constant.EvidenceConstants;
 import com.barangay.barangay.blotter.constant.NatureOfComplaintConstants;
 import com.barangay.barangay.blotter.dto.complaint.ArchiveCaseDTO;
+import com.barangay.barangay.blotter.dto.complaint.StatusUpdateDTO;
 import com.barangay.barangay.blotter.dto.notes.AddCaseNoteRequest;
 import com.barangay.barangay.blotter.dto.complaint.EvidenceOptionDTO;
 import com.barangay.barangay.blotter.dto.complaint.NatureOptionDTO;
@@ -81,6 +82,44 @@ public class BlotterService {
         //  AUDIT LOG
         logNoteActivity(managedOfficer, blotterCase, dto.note(), ipAddress);
 
+    }
+
+
+
+    @Transactional
+    public void updateCaseStatus(Long caseId, StatusUpdateDTO dto, User actor, String ipAddress) {
+        BlotterCase blotterCase = blotterCaseRepository.findById(caseId)
+                .orElseThrow(() -> new RuntimeException("Case not found!"));
+
+        CaseStatus oldStatus = blotterCase.getStatus();
+        CaseStatus newStatus = dto.newStatus();
+
+        if (isEndState(oldStatus) && !isEndState(newStatus)) {
+
+            blotterCase.setSettledAt(null);
+            blotterCase.setSettledAt(null);
+            blotterCase.setIsCertified(false);
+            blotterCase.setCertifiedAt(null);
+            blotterCase.setIsArchived(false);
+        }
+
+        blotterCase.setStatus(newStatus);
+        blotterCase.setStatusRemarks(dto.remarks());
+        blotterCase.setUpdatedBy(actor);
+
+        blotterCaseRepository.save(blotterCase);
+
+        // Audit Log: Importante 'to para may record sino ang pasimuno ng re-open
+        auditLogService.log(actor, Departments.BLOTTER, "Status Update", Severity.WARNING,
+                "Updated Case #" + blotterCase.getBlotterNumber() + " from " + oldStatus + " to " + newStatus,
+                ipAddress, "Remarks: " + dto.remarks(), null, null);
+    }
+
+    private boolean isEndState(CaseStatus status) {
+        return status == CaseStatus.SETTLED ||
+                status == CaseStatus.CLOSED ||
+                status == CaseStatus.DISMISSED ||
+                status == CaseStatus.CERTIFIED_TO_FILE_ACTION;
     }
 
 
