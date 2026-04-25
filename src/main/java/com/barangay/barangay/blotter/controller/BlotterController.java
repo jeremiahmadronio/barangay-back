@@ -6,6 +6,7 @@ import com.barangay.barangay.blotter.dto.Records.UpdateStatusDTO;
 import com.barangay.barangay.blotter.dto.complaint.ArchiveCaseDTO;
 import com.barangay.barangay.blotter.dto.complaint.EvidenceOptionDTO;
 import com.barangay.barangay.blotter.dto.complaint.NatureOptionDTO;
+import com.barangay.barangay.blotter.dto.complaint.StatusUpdateDTO;
 import com.barangay.barangay.blotter.dto.hearing.BusySlotDTO;
 import com.barangay.barangay.blotter.dto.hearing.CalendarMarkerDTO;
 import com.barangay.barangay.blotter.dto.hearing.HearingViewDTO;
@@ -53,6 +54,22 @@ public class BlotterController {
           blotterService.addNoteToCase(dto, userDetails.user(), ipAddress);
 
         return ResponseEntity.ok("Successfully added note");
+    }
+
+
+
+    @PatchMapping("/{caseId}/status")
+    public ResponseEntity<Void> updateCaseStatus(
+            @PathVariable Long caseId,
+            @RequestBody @Valid StatusUpdateDTO dto,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            HttpServletRequest request) {
+
+        String ipAddress = IpAddressUtils.getClientIp(request);
+
+        blotterService.updateCaseStatus(caseId, dto, userDetails.user(), ipAddress);
+
+        return ResponseEntity.noContent().build();
     }
 
 
