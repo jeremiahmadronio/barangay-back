@@ -1,5 +1,6 @@
 package com.barangay.barangay.blotter.model;
 
+import com.barangay.barangay.security.encryption_and_decryption.EncryptedFieldConverter;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -21,7 +22,6 @@ public class IncidentDetail {
     private Long id;
 
     @Column(name = "nature_of_complaint" ,columnDefinition = "TEXT")
-
     private String natureOfComplaint;
 
     @Column(name = "incident_frequency")
@@ -33,10 +33,12 @@ public class IncidentDetail {
     @Column(name = "incident_time")
     private LocalTime timeOfIncident;
 
-    @Column(length = 255, name = "incident_location")
+    @Column(columnDefinition = "TEXT", name = "incident_location")
+    @Convert(converter = EncryptedFieldConverter.class)
     private String placeOfIncident;
 
     @Column(columnDefinition = "TEXT",name = "injuries_damage_description")
+    @Convert(converter = EncryptedFieldConverter.class)
     private String injuriesDamagesDescription;
 
 }

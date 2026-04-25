@@ -3,6 +3,7 @@ package com.barangay.barangay.ftjs.model;
 import com.barangay.barangay.admin_management.model.User;
 import com.barangay.barangay.person.model.Person;
 import com.barangay.barangay.person.model.Resident;
+import com.barangay.barangay.security.encryption_and_decryption.EncryptedFieldConverter;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -31,6 +32,7 @@ public class FirstTimeJobSeekerAffidavitOfLoss {
     private FirstTimeJobSeeker ftjs;
 
     @Column(columnDefinition = "TEXT")
+    @Convert(converter = EncryptedFieldConverter.class)
     private String reason;
 
     private LocalDate dateOfLoss;
@@ -43,7 +45,8 @@ public class FirstTimeJobSeekerAffidavitOfLoss {
 
     private BigDecimal amountPaid;
 
-    @Column(name = "or_number")
+    @Column(name = "or_number",columnDefinition = "TEXT")
+    @Convert(converter = EncryptedFieldConverter.class)
     private String orNumber;
 
     @ManyToOne(fetch = FetchType.LAZY)

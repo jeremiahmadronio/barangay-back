@@ -49,7 +49,7 @@ public class AuthenticationService {
             if (user.getLockUntil() != null && user.getLockUntil().isAfter(LocalDateTime.now())) {
                 long minutesLeft = Math.max(1, ChronoUnit.MINUTES.between(LocalDateTime.now(), user.getLockUntil()));
 
-                auditLogService.log(user, null, "Login Authentication", Severity.WARNING,
+                auditLogService.log(user, null, "Authentication", Severity.WARNING,
                         "Attempt on locked account", ipAddress, "Locked until: " + user.getLockUntil(), null, null);
 
                 throw new LockedException("Account is temporarily locked. Try again in " + minutesLeft + " minutes.");
@@ -62,7 +62,7 @@ public class AuthenticationService {
 
         // --- 2. STATUS CHECK ---
         if (user.getStatus() != Status.ACTIVE) {
-            auditLogService.log(user, null, "Login Authentication", Severity.WARNING,
+            auditLogService.log(user, null, "Authentication", Severity.WARNING,
                     "Attempt on inactive account", ipAddress, "Status: " + user.getStatus(), null, null);
             throw new DisabledException("Account is inactive. Contact your administrator.");
         }
@@ -86,7 +86,7 @@ public class AuthenticationService {
             }
 
             userRepository.saveAndFlush(user);
-            auditLogService.log(user, null, "Login Authentication", Severity.WARNING,
+            auditLogService.log(user, null, "Authentication", Severity.WARNING,
                     (lockMsg != null ? lockMsg : "Failed attempt #" + attempts), ipAddress, "Auth failure", null, null);
 
             if (user.getIsLocked()) throw new LockedException(lockMsg);
@@ -105,7 +105,7 @@ public class AuthenticationService {
 
         mfaService.sendMfaEmail(user.getSystemEmail(), code);
 
-        auditLogService.log(user, null, "Login Authentication", Severity.INFO,
+        auditLogService.log(user, null, "Authentication", Severity.INFO,
                 "OTP sent to primary email", ipAddress, null, null, null);
 
         return new LoginResponse(
@@ -153,7 +153,7 @@ public class AuthenticationService {
         }
 
         if (!isVerified) {
-            auditLogService.log(user, null, "Login Authentication", Severity.WARNING,
+            auditLogService.log(user, null, "Authentication", Severity.WARNING,
                     "Failed MFA verification attempt", ipAddress,
                     "Method: " + request.type(), null, "User ID: " + user.getId());
 
@@ -194,7 +194,7 @@ public class AuthenticationService {
         String jwtToken = jwtService.generateToken(extraClaims, new CustomUserDetails(user));
 
         // Audit Success
-        auditLogService.log(user, null, "Login Authentication", Severity.INFO,
+        auditLogService.log(user, null, "Authentication", Severity.INFO,
                 "Successful login via " + request.type(), ipAddress,
                 null, null, "Session started");
 
@@ -251,9 +251,9 @@ public class AuthenticationService {
         auditLogService.log(
                 user,
                 null,
-                "Login Authentication",
+                "Authentication",
                 Severity.INFO,
-                "New user initialization: Password set successfully",
+                "New user initialization Password set successfully",
                 ipAddress,
                 "Account activated",
                 "isNewAccount: true -> false",
@@ -284,8 +284,8 @@ public class AuthenticationService {
 
         mfaService.sendMfaEmail(backupEmail, code);
 
-        auditLogService.log(user, null, "SECURITY", Severity.INFO,
-                "BACKUP_EMAIL_VERIFICATION_SENT", ipAddress, "Code sent to: " + backupEmail, null, null);
+        auditLogService.log(user, null, "Security", Severity.INFO,
+                "Register backup email", ipAddress, "Code sent to: " + backupEmail, null, null);
     }
 
     // STEP B: Verify code and finalize backup email
@@ -304,8 +304,8 @@ public class AuthenticationService {
         user.setMfaExpiry(null);
         userRepository.save(user);
 
-        auditLogService.log(user, null, "SECURITY", Severity.INFO,
-                "BACKUP_EMAIL_UPDATED", ipAddress, "Backup email set to: " + backupEmail, null, null);
+        auditLogService.log(user, null, "Security", Severity.INFO,
+                "Register new backup email", ipAddress, "Backup email set to: " + backupEmail, null, null);
     }
 
     @Transactional
@@ -364,7 +364,7 @@ public class AuthenticationService {
         userRepository.save(user);
 
         auditLogService.log(
-                user, null, "SECURITY", Severity.WARNING, "PASSWORD_RESET_SUCCESS",
+                user, null, "Authentication", Severity.WARNING, "Reset password",
                 ipAddress, "User successfully reset password", null, null
         );
     }

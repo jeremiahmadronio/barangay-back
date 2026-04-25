@@ -2,6 +2,7 @@ package com.barangay.barangay.blotter.model;
 
 import com.barangay.barangay.admin_management.model.User;
 import com.barangay.barangay.enumerated.HearingOutcome;
+import com.barangay.barangay.security.encryption_and_decryption.EncryptedFieldConverter;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -31,6 +32,7 @@ public class HearingMinutes {
     private Boolean respondentPresent = false;
 
     @Column(columnDefinition = "TEXT",name = "session_notes")
+    @Convert(converter = EncryptedFieldConverter.class)
     private String hearingNotes;
 
     @Enumerated(EnumType.STRING)

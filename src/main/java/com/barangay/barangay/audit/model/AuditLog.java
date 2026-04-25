@@ -3,6 +3,7 @@ package com.barangay.barangay.audit.model;
 import com.barangay.barangay.enumerated.Departments;
 import com.barangay.barangay.enumerated.Severity;
 import com.barangay.barangay.admin_management.model.User;
+import com.barangay.barangay.security.encryption_and_decryption.EncryptedFieldConverter;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -34,14 +35,20 @@ public class AuditLog {
     private Departments department;
 
     // basic column
-    @Column(length = 45)
+    @Column(columnDefinition = "TEXT")
+    @Convert(converter = EncryptedFieldConverter.class)
     private String ipAddress;
+
     private String module;
 
     @Enumerated(EnumType.STRING)
     private Severity severity;
-    @Column(name = "action_taken")
+
+    @Convert(converter = EncryptedFieldConverter.class)
+    @Column(name = "action_taken", columnDefinition = "TEXT")
     private String actionTaken;
+
+    @Convert(converter = EncryptedFieldConverter.class)
     @Column(columnDefinition = "TEXT")
     private String reason;
 

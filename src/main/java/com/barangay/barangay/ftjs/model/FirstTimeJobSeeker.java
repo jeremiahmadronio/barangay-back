@@ -4,6 +4,7 @@ import com.barangay.barangay.admin_management.model.User;
 import com.barangay.barangay.enumerated.FtjsStatus;
 import com.barangay.barangay.person.model.Person;
 import com.barangay.barangay.person.model.Resident;
+import com.barangay.barangay.security.encryption_and_decryption.EncryptedFieldConverter;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -36,24 +37,31 @@ public class FirstTimeJobSeeker{
     @Column(name = "ftjs_number", columnDefinition = "TEXT")
     private String ftjsNumber;
 
-    @Column(name = "educational_attainment", length = 100)
+    @Convert(converter = EncryptedFieldConverter.class)
+    @Column(name = "educational_attainment", columnDefinition = "TEXT")
     private String educationalAttainment;
 
 
-
+    @Convert(converter = EncryptedFieldConverter.class)
+    @Column(columnDefinition = "TEXT")
     private String course;
 
-    @Column(name = "school_institution")
+    @Convert(converter = EncryptedFieldConverter.class)
+    @Column(name = "school_institution",columnDefinition = "TEXT")
     private String schoolInstitution;
 
+    @Convert(converter = EncryptedFieldConverter.class)
+    @Column(columnDefinition = "TEXT")
     private String schoolAddress;
 
     @Column(name = "valid_id_type")
     private String validIdType;
 
-    @Column(name = "id_number")
+    @Convert(converter = EncryptedFieldConverter.class)
+    @Column(name = "id_number", columnDefinition = "TEXT")
     private String idNumber;
 
+    @Convert(converter = EncryptedFieldConverter.class)
     @Column(columnDefinition = "TEXT")
     private String purposeDocuments;
 
@@ -78,6 +86,8 @@ public class FirstTimeJobSeeker{
 
     private boolean isArchive;
 
+    @Column(columnDefinition = "TEXT")
+    @Convert(converter = EncryptedFieldConverter.class)
     private String archiveRemarks;
 
     @Column(columnDefinition = "TEXT")

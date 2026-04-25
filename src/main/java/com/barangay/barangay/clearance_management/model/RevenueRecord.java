@@ -1,6 +1,7 @@
 package com.barangay.barangay.clearance_management.model;
 
 import com.barangay.barangay.admin_management.model.User;
+import com.barangay.barangay.security.encryption_and_decryption.EncryptedFieldConverter;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -25,7 +26,8 @@ public class RevenueRecord {
     @JoinColumn(name = "issued_cert_id", nullable = false)
     private IssuedCertificate issuedCertificate;
 
-    @Column(unique = true, nullable = false, length = 50)
+    @Column(unique = true, nullable = false,columnDefinition = "TEXT")
+    @Convert(converter = EncryptedFieldConverter.class)
     private String orNumber;
 
     @Column(nullable = false, precision = 12, scale = 2)

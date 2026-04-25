@@ -130,9 +130,9 @@ public class BlotterService {
         auditLogService.log(
                 actor,
                 Departments.BLOTTER,
-                "BLOTTER_MANAGEMENT",
+                "Notes Management",
                 Severity.INFO,
-                "STATUS_CHANGE",
+                "Change Status",
                 ipAddress,
                 dto.reason(),
                 current.name(),
@@ -184,9 +184,9 @@ public class BlotterService {
             auditLogService.log(
                     officer,
                     Departments.BLOTTER,
-                    "CASE_NOTE_ADDED",
+                    "Notes Management",
                     Severity.INFO,
-                    "ADD_NOTE",
+                    "Create Notes for - " + bc.getBlotterNumber() ,
                     ip,
                     "Added follow-up note to Case: " + bc.getBlotterNumber(),
                     null,

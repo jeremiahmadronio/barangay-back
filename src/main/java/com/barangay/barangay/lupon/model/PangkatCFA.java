@@ -2,6 +2,7 @@ package com.barangay.barangay.lupon.model;
 
 import com.barangay.barangay.admin_management.model.User;
 import com.barangay.barangay.blotter.model.BlotterCase;
+import com.barangay.barangay.security.encryption_and_decryption.EncryptedFieldConverter;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -28,6 +29,7 @@ public class PangkatCFA {
     private BlotterCase blotterCase;
 
     @Column(columnDefinition = "TEXT", nullable = false,name = "grounds")
+    @Convert(converter = EncryptedFieldConverter.class)
     private String grounds;
 
     @Column(nullable = false,name = "subject_of_litigations")

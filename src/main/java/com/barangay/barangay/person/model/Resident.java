@@ -1,6 +1,7 @@
 package com.barangay.barangay.person.model;
 
 import com.barangay.barangay.enumerated.ResidentStatus;
+import com.barangay.barangay.security.encryption_and_decryption.EncryptedFieldConverter;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -55,13 +56,15 @@ public class Resident {
     @Column(nullable = false, name = "is_pwd")
     private Boolean isPwd = false;
 
-    @Column(length = 50, name = "pwd_id_number")
+    @Column(columnDefinition = "TEXT", name = "pwd_id_number")
+    @Convert(converter = EncryptedFieldConverter.class)
     private String pwdIdNumber;
 
     @Column(nullable = false, name = "is_indigent")
     private Boolean isIndigent = false;
 
-    @Column(length = 50, name = "educational_attainment")
+    @Column(columnDefinition = "TEXT", name = "educational_attainment")
+    @Convert(converter = EncryptedFieldConverter.class)
     private String educationalAttainment;
 
     @Column(length = 50, name = "citizenship")

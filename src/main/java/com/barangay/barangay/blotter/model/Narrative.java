@@ -1,5 +1,6 @@
 package com.barangay.barangay.blotter.model;
 
+import com.barangay.barangay.security.encryption_and_decryption.EncryptedFieldConverter;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -22,6 +23,7 @@ public class Narrative {
 
 
     @Column(columnDefinition = "TEXT", nullable = false)
+    @Convert(converter = EncryptedFieldConverter.class)
     private String statement;
 
     @CreationTimestamp

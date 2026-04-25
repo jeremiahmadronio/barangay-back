@@ -55,9 +55,9 @@ public class MfaSetupService {
         userRepository.save(user);
 
         auditLogService.log(
-                user, null, "SECURITY", Severity.INFO,
-                "TOTP_MFA_ENABLED", ipAddress,
-                "User successfully enabled Authenticator App", null, null
+                user, null, "Authentication", Severity.INFO,
+                "Enabled Authenticator App", ipAddress,
+                null, null, null
         );
 
         return new MfaEnableSuccessResponse("TOTP_ENABLED_SUCCESSFULLY", recoveryCodes);

@@ -3,6 +3,7 @@ package com.barangay.barangay.clearance_management.model;
 import com.barangay.barangay.admin_management.model.User;
 import com.barangay.barangay.enumerated.ClearanceStatus;
 import com.barangay.barangay.person.model.Person;
+import com.barangay.barangay.security.encryption_and_decryption.EncryptedFieldConverter;
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -32,10 +33,12 @@ public class IssuedCertificate {
     @JoinColumn(name = "template_id", nullable = false)
     private CertificateTemplate template;
 
-    @Column(length = 50)
+    @Column(columnDefinition = "TEXT")
+    @Convert(converter = EncryptedFieldConverter.class)
     private String orNumber;
 
-    @Column(length = 50)
+    @Column(columnDefinition = "TEXT")
+    @Convert(converter = EncryptedFieldConverter.class)
     private String ctnNumber;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -51,6 +54,9 @@ public class IssuedCertificate {
 
     private boolean isFree = false;
     private boolean isArchive = false;
+
+    @Convert(converter = EncryptedFieldConverter.class)
+    @Column(columnDefinition = "TEXT")
     private String archiveRemarks;
 
     @Column(length = 20)

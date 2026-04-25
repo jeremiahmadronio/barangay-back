@@ -1,5 +1,6 @@
 package com.barangay.barangay.person.model;
 
+import com.barangay.barangay.security.encryption_and_decryption.EncryptedFieldConverter;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -43,10 +44,12 @@ public class Person {
     @Column(length = 10)
     private String suffix;
 
-    @Column(length = 15, name = "contact_number")
+    @Column(columnDefinition = "TEXT", name = "contact_number")
+    @Convert(converter = EncryptedFieldConverter.class)
     private String contactNumber;
 
     @Column(columnDefinition = "TEXT", name = "complete_address")
+    @Convert(converter = EncryptedFieldConverter.class)
     private String completeAddress;
 
     @Column(nullable = false, name = "is_resident")
@@ -61,13 +64,14 @@ public class Person {
     @Column(length = 20 , name = "gender")
     private String gender;
 
-    @Column(length = 50 , name = "civil_status")
+    @Column(columnDefinition = "TEXT", name = "civil_status")
     private String civilStatus;
 
     @Column(length = 255 , name = "email")
     private String email;
 
-    @Column(length = 100,name = "occupation")
+    @Column(columnDefinition = "TEXT",name = "occupation")
+    @Convert(converter = EncryptedFieldConverter.class)
     private String occupation;
 
     @CreationTimestamp

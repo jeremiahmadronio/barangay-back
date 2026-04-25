@@ -1,6 +1,7 @@
 package com.barangay.barangay.person.model;
 
 import com.barangay.barangay.blotter.model.BlotterCase;
+import com.barangay.barangay.security.encryption_and_decryption.EncryptedFieldConverter;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -28,6 +29,7 @@ public class Witness {
     private Person person;
 
     @Column(columnDefinition = "TEXT")
+    @Convert(converter = EncryptedFieldConverter.class)
     private String testimony;
 
     @CreationTimestamp

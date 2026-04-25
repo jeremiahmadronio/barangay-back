@@ -9,6 +9,7 @@ import com.barangay.barangay.lupon.model.PangkatCFA;
 import com.barangay.barangay.person.model.Complainant;
 import com.barangay.barangay.person.model.Respondent;
 import com.barangay.barangay.person.model.Witness;
+import com.barangay.barangay.security.encryption_and_decryption.EncryptedFieldConverter;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -44,12 +45,14 @@ public class BlotterCase {
 
 
     @Column(columnDefinition = "TEXT", name = "case_remarks")
+    @Convert(converter = EncryptedFieldConverter.class)
     private String statusRemarks;
 
     @Column(name = "is_archived", nullable = false)
     private Boolean isArchived = false;
 
     @Column(name = "archived_remarks" , columnDefinition = "TEXT")
+    @Convert(converter = EncryptedFieldConverter.class)
     private String archivedRemarks;
 
 
@@ -61,6 +64,7 @@ public class BlotterCase {
 
 
     @Column(columnDefinition = "TEXT" ,name = "settlement_terms" )
+    @Convert(converter = EncryptedFieldConverter.class)
     private String settlementTerms;
 
     @Column(name = "settled_at")

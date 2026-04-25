@@ -1,6 +1,7 @@
 package com.barangay.barangay.ftjs.model;
 
 import com.barangay.barangay.admin_management.model.User;
+import com.barangay.barangay.security.encryption_and_decryption.EncryptedFieldConverter;
 import jakarta.persistence.*;
 import lombok.Data;
 import org.hibernate.annotations.CreationTimestamp;
@@ -21,6 +22,7 @@ public class FirstTimeJobSeekerNotes {
     private FirstTimeJobSeeker ftjs;
 
     @Column(columnDefinition = "TEXT")
+    @Convert(converter = EncryptedFieldConverter.class)
     private String notes;
 
     @ManyToOne(fetch = FetchType.LAZY)

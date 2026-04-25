@@ -246,58 +246,33 @@ public class DataInitializer implements CommandLineRunner {
         String rawPassword = "82219800Jeremiah!";
         String hashedContext = passwordEncoder.encode(rawPassword);
 
-        User rootUser = userRepository.findByUsername("rootadmin")
-                .orElseGet(() -> {
+        if (!userRepository.existsBySystemEmail("nermamadronio@gmail.com")) {
 
-                    Person person = new Person();
-                    person.setFirstName("Juan");
-                    person.setLastName("Dela Cruz");
-                    person = personRepository.save(person);
+            Person person = new Person();
+            person.setFirstName("Juan");
+            person.setLastName("Dela Cruz");
+            person = personRepository.save(person);
 
+            User root = new User();
+            root.setUsername("rootadmin");
+            root.setPassword(hashedContext);
+            root.setSystemEmail("nermamadronio@gmail.com");
+            root.setPerson(person);
+            root.setStatus(Status.ACTIVE);
+            root.setRole(rootRole);
+            root.setAllowedDepartments(new HashSet<>(Set.of(adminDept)));
+            root.setFailedAttempts(0);
+            root.setIsLocked(false);
+            userRepository.save(root);
 
-                    User root = new User();
-                    root.setUsername("rootadmin");
-                    root.setPassword(hashedContext);
-                    root.setSystemEmail("nermamadronio@gmail.com");
-                    root.setPerson(person);
-                    root.setStatus(Status.ACTIVE);
-                    root.setRole(rootRole);
-                    root.setAllowedDepartments(new HashSet<>(Set.of(adminDept)));
-                    root.setFailedAttempts(0);
-                    root.setIsLocked(false);
-                    return userRepository.save(root);
-                });
-
-
-
-
-        if (auditLogRepository.count() == 0) {
-            System.out.println("Starting Audit Log Seeding for Dashboard Testing...");
-
-            seedLogs(rootUser, Departments.VAWC,      "VAWC",      245);
-            seedLogs(rootUser, Departments.BLOTTER,   "BLOTTER",   189);
-            seedLogs(rootUser, Departments.BCPC,      "BCPC",      156);
-            seedLogs(rootUser, Departments.FTJS,      "FTJS",       98);
-            seedLogs(rootUser, Departments.CLEARANCE, "CLEARANCE", 312);
-
-            List<AuditLog> criticalLogs = new ArrayList<>();
-            for (int i = 0; i < 3; i++) {
-                criticalLogs.add(AuditLog.builder()
-                        .user(rootUser)
-                        .department(Departments.ROOT_ADMIN)
-                        .severity(Severity.CRITICAL)
-                        .module("SECURITY")
-                        .actionTaken("UNAUTHORIZED_ACCESS_ATTEMPT")
-                        .reason("Detected multiple failed attempts from unrecognized IP")
-                        .ipAddress("192.168.1.50")
-                        .build());
-            }
-            auditLogRepository.saveAll(criticalLogs);
-
-            seedHistoricalLogs(rootUser, 50);
-
-            System.out.println("Dashboard testing data seeded successfully.");
+        } else {
+            User rootUser = userRepository.findBySystemEmail("nermamadronio@gmail.com")
+                    .orElseThrow();
+            // use rootUser kung kailangan mo siya sa ibang part ng DataInitializer
         }
+
+
+
 
 
     }
@@ -309,61 +284,7 @@ public class DataInitializer implements CommandLineRunner {
 
 
 
-    /**
-     * FIX: Was hardcoding Departments.ROOT_ADMIN — now uses the dept param correctly.
-     */
-    private void seedLogs(User actor, Departments dept, String module, int count) {
-        List<AuditLog> logsToSave = new ArrayList<>();
-        for (int i = 0; i < count; i++) {
-            logsToSave.add(AuditLog.builder()
-                    .user(actor)
-                    .department(dept)
-                    .module(module)
-                    .severity(Severity.INFO)
-                    .actionTaken("CREATE_RECORD")
-                    .reason("Initial migration data for " + module)
-                    .ipAddress("127.0.0.1")
-                    .build());
-        }
-        auditLogRepository.saveAll(logsToSave);
-    }
 
-    /**
-     * Seeds historical logs with a backdated created_at timestamp.
-     */
-    private void seedHistoricalLogs(User actor, int count) {
-        Departments dept = Departments.ROOT_ADMIN;
-        LocalDateTime lastMonth = LocalDateTime.now().minusMonths(1).minusDays(5);
-
-        String roleName = (actor.getRole() != null)
-                ? actor.getRole().getRoleName()
-                : "SYSTEM";
-
-        List<AuditLog> logsToSave = new ArrayList<>();
-        for (int i = 0; i < count; i++) {
-            logsToSave.add(AuditLog.builder()
-                    .user(actor)
-                    .department(dept)
-                    .severity(Severity.INFO)
-                    .module(roleName)
-                    .actionTaken("HISTORICAL_LOG")
-                    .reason("Generated log for " + roleName)
-                    .ipAddress("127.0.0.1")
-                    .build());
-        }
-
-        // Save all first, then batch-update created_at to backdate them
-        List<AuditLog> savedLogs = auditLogRepository.saveAll(logsToSave);
-
-        List<Object[]> batchArgs = savedLogs.stream()
-                .map(log -> new Object[]{lastMonth, log.getId()})
-                .collect(Collectors.toList());
-
-        jdbcTemplate.batchUpdate(
-                "UPDATE audit_logs SET created_at = ? WHERE id = ?",
-                batchArgs
-        );
-    }
 
     private Department createDeptIfNotFound(String name) {
         return departmentRepository.findByName(name)

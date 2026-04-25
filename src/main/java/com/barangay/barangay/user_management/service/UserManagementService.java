@@ -270,14 +270,10 @@ public class UserManagementService {
             }
             oldValues.put("username", user.getUsername());
             user.setUsername(request.username());
-
-
             newValues.put("username", user.getUsername());
         }
 
-
         String fullName = user.getPerson().getFirstName() + " " + user.getPerson().getLastName();
-        String rawPassword = user.getPassword();
 
         if (request.systemEmail() != null && !request.systemEmail().equals(user.getSystemEmail())) {
             if (userManagementRepository.existsBySystemEmail(request.systemEmail())) {
@@ -285,12 +281,14 @@ public class UserManagementService {
             }
             oldValues.put("systemEmail", user.getSystemEmail());
             user.setSystemEmail(request.systemEmail());
-
-            sendCredentials.sendCredentials(request.systemEmail(), fullName, rawPassword);
-
             newValues.put("systemEmail", user.getSystemEmail());
-        }
 
+            // Generate bagong password — huwag i-send yung hashed password
+            String newRawPassword = PasswordGenerator.generateRandomPassword(12);
+            user.setPassword(passwordEncoder.encode(newRawPassword));
+            user.setNewAccount(true); // force password change on next login
+            sendCredentials.sendCredentials(request.systemEmail(), fullName, newRawPassword);
+        }
 
         if (request.roleId() != null && (user.getRole() == null || !request.roleId().equals(user.getRole().getId()))) {
             Role newRole = roleRepository.findById(request.roleId())
@@ -329,7 +327,7 @@ public class UserManagementService {
                 Departments.ADMINISTRATION,
                 "User Management",
                 Severity.INFO,
-                "User details Updated — @" + officer.getUsername() + "."  ,
+                "User details Updated — @" + officer.getUsername() + ".",
                 ipAddress,
                 null,
                 oldValues,

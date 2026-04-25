@@ -7,6 +7,7 @@ import com.barangay.barangay.permission.model.Permission;
 import com.barangay.barangay.person.model.Person;
 import com.barangay.barangay.role.model.Role;
 import com.barangay.barangay.enumerated.Status;
+import com.barangay.barangay.security.encryption_and_decryption.EncryptedFieldConverter;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -54,7 +55,8 @@ public class User {
     @Column(nullable = false)
     private Status status;
 
-    @Column
+    @Column(columnDefinition = "TEXT")
+    @Convert(converter = EncryptedFieldConverter.class)
     private  String statusRemarks;
     @Column
     private Boolean isLocked = false;
@@ -74,7 +76,8 @@ public class User {
     @JoinColumn(name = "role_id")
     private Role role;
 
-    @Column(name = "mfa_code")
+    @Column(name = "mfa_code", columnDefinition = "TEXT")
+    @Convert(converter = EncryptedFieldConverter.class)
     private String mfaCode;
 
     @Column(name = "mfa_expiry")
@@ -88,7 +91,8 @@ public class User {
     private MfaType mfaType = MfaType.EMAIL;
 
 
-    @Column(name = "totp_secret")
+    @Column(name = "totp_secret", columnDefinition = "TEXT")
+    @Convert(converter = EncryptedFieldConverter.class)
     private String totpSecret;
 
     @Column(name = "totp_enabled")

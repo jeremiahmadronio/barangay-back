@@ -16,6 +16,9 @@ public class BarangayApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(BarangayApplication.class, args);
+
+
+
 	}
 
 }

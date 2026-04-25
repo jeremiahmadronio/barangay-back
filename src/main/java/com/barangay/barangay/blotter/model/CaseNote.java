@@ -1,6 +1,7 @@
 package com.barangay.barangay.blotter.model;
 
 import com.barangay.barangay.admin_management.model.User;
+import com.barangay.barangay.security.encryption_and_decryption.EncryptedFieldConverter;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -24,6 +25,7 @@ public class CaseNote {
     private BlotterCase blotterCase;
 
     @Column(columnDefinition = "TEXT", nullable = false, name = "notes")
+    @Convert(converter = EncryptedFieldConverter.class)
     private String note;
 
     @ManyToOne(fetch = FetchType.LAZY)

@@ -1,6 +1,7 @@
 package com.barangay.barangay.blotter.model;
 
 import com.barangay.barangay.admin_management.model.User;
+import com.barangay.barangay.security.encryption_and_decryption.EncryptedFieldConverter;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -26,6 +27,7 @@ public class HearingFollowUp {
     private Hearing hearing;
 
     @Column(columnDefinition = "TEXT", nullable = false,name = "remarks")
+    @Convert(converter = EncryptedFieldConverter.class)
     private String remarks;
 
     @ManyToOne(fetch = FetchType.LAZY)

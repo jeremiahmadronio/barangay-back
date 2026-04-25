@@ -248,7 +248,7 @@ public class BlotterFormComplaintService {
         auditLogService.log(
                 managedOfficer,
                 Departments.BLOTTER,
-                "Blotter Cases",
+                "Case Entry",
                 Severity.INFO,
                 "Formal Complaint Filed — " + savedCase.getBlotterNumber() + ".",
                 ipAddress,
@@ -334,9 +334,9 @@ public class BlotterFormComplaintService {
             auditLogService.log(
                     officer,
                     Departments.BLOTTER,
-                    "BLOTTER_ENTRY",
+                    "Case Entry",
                     Severity.INFO,
-                    "CREATE_BLOTTER_FOR_RECORD",
+                    "Record Complaint Filed — " + bc.getBlotterNumber() + ".",
                     ip,
                     "Created blotter entry [" + bc.getBlotterNumber() + "]",
                     null,
@@ -385,7 +385,7 @@ public class BlotterFormComplaintService {
         auditLogService.log(
                 officer,
                 Departments.BLOTTER,
-                "Blotter Cases",
+                "Case Management",
                 Severity.INFO,
                 "Blotter Case Updated — " + blotterCase.getBlotterNumber() + ".",
                 ip,
