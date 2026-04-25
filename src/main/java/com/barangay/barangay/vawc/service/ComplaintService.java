@@ -77,7 +77,6 @@ public class ComplaintService {
                 null
         );
 
-        // 3. RESPONDENT — same logic
         Person respondentPerson = getOrSavePerson(
                 dto.respondentId(),
                 dto.respondentFirstName(),
